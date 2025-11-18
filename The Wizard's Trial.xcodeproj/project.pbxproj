@@ -1,0 +1,554 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		624724492EC16E48007D13C0 /* click.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 6247243E2EC16E48007D13C0 /* click.mp3 */; };
+		6247244B2EC16E48007D13C0 /* stategame.png in Resources */ = {isa = PBXBuildFile; fileRef = 624724462EC16E48007D13C0 /* stategame.png */; };
+		6247244C2EC16E48007D13C0 /* bgm.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 6247243D2EC16E48007D13C0 /* bgm.mp3 */; };
+		6247244D2EC16E48007D13C0 /* menuimage.png in Resources */ = {isa = PBXBuildFile; fileRef = 624724432EC16E48007D13C0 /* menuimage.png */; };
+		6247244E2EC16E48007D13C0 /* mainmenu.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 624724412EC16E48007D13C0 /* mainmenu.mp3 */; };
+		6247244F2EC16E48007D13C0 /* shop.png in Resources */ = {isa = PBXBuildFile; fileRef = 624724452EC16E48007D13C0 /* shop.png */; };
+		624724502EC16E48007D13C0 /* title.png in Resources */ = {isa = PBXBuildFile; fileRef = 624724472EC16E48007D13C0 /* title.png */; };
+		624724512EC16E48007D13C0 /* MainMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624724422EC16E48007D13C0 /* MainMenuView.swift */; };
+		624724522EC16E48007D13C0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6247243F2EC16E48007D13C0 /* ContentView.swift */; };
+		624724532EC16E48007D13C0 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624724402EC16E48007D13C0 /* GameScene.swift */; };
+		624724542EC16E48007D13C0 /* Veggie_DodgerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624724482EC16E48007D13C0 /* Veggie_DodgerApp.swift */; };
+		624724552EC16E48007D13C0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624724442EC16E48007D13C0 /* RootView.swift */; };
+		624724572EC17897007D13C0 /* loadingscreen.png in Resources */ = {isa = PBXBuildFile; fileRef = 624724562EC17897007D13C0 /* loadingscreen.png */; };
+		624724592EC17C16007D13C0 /* loadscreentext.png in Resources */ = {isa = PBXBuildFile; fileRef = 624724582EC17C16007D13C0 /* loadscreentext.png */; };
+		6247245B2EC17E15007D13C0 /* LoadingScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6247245A2EC17E0F007D13C0 /* LoadingScreenView.swift */; };
+		6247245D2EC1A13A007D13C0 /* firewizard.png in Resources */ = {isa = PBXBuildFile; fileRef = 6247245C2EC1A13A007D13C0 /* firewizard.png */; };
+		6247245F2EC1B030007D13C0 /* applogo.png in Resources */ = {isa = PBXBuildFile; fileRef = 6247245E2EC1B030007D13C0 /* applogo.png */; };
+		624724612EC1B340007D13C0 /* background.png in Resources */ = {isa = PBXBuildFile; fileRef = 624724602EC1B340007D13C0 /* background.png */; };
+		6260F2E92EC937DB00E70B6C /* EntNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6260F2E82EC937DB00E70B6C /* EntNode.swift */; };
+		6260F2EB2EC963C700E70B6C /* explosion.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F2EA2EC963C700E70B6C /* explosion.wav */; };
+		6260F2ED2EC9720C00E70B6C /* WoodlandElfNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6260F2EC2EC9720C00E70B6C /* WoodlandElfNode.swift */; };
+		6260F2F12ECA400F00E70B6C /* WoodlandDruidNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6260F2F02ECA400600E70B6C /* WoodlandDruidNode.swift */; };
+		6260F2F52ECBCE6700E70B6C /* levelUp.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F2F42ECBCE6700E70B6C /* levelUp.wav */; };
+		6260F2F92ECBDC6B00E70B6C /* PlayerInventory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6260F2F82ECBDC6B00E70B6C /* PlayerInventory.swift */; };
+		6260F2FB2ECBDC9E00E70B6C /* ShopItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6260F2FA2ECBDC9E00E70B6C /* ShopItem.swift */; };
+		626BBBFD2EC29D1100AF73C2 /* shopmusic.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 626BBBFC2EC29D1000AF73C2 /* shopmusic.mp3 */; };
+		626BBC032EC2A13F00AF73C2 /* shopimage.png in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC022EC2A13F00AF73C2 /* shopimage.png */; };
+		626BBC052EC2A25F00AF73C2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC042EC2A25F00AF73C2 /* Assets.xcassets */; };
+		626BBC072EC2AC2A00AF73C2 /* TypewriterText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626BBC062EC2AC2A00AF73C2 /* TypewriterText.swift */; };
+		626BBC0E2EC2B4BE00AF73C2 /* Font+Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626BBC0D2EC2B4B900AF73C2 /* Font+Theme.swift */; };
+		626BBC102EC2B93F00AF73C2 /* PressStart2P-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC0F2EC2B93F00AF73C2 /* PressStart2P-Regular.ttf */; };
+		626BBC142EC2C42400AF73C2 /* ShopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626BBC132EC2C42400AF73C2 /* ShopView.swift */; };
+		626BBC162EC2C44800AF73C2 /* textscroll.wav in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC152EC2C44800AF73C2 /* textscroll.wav */; };
+		626BBC1A2EC2CB0C00AF73C2 /* manacrystal.png in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC192EC2CB0C00AF73C2 /* manacrystal.png */; };
+		626BBC1C2EC2CC0700AF73C2 /* manashield.png in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC1B2EC2CC0700AF73C2 /* manashield.png */; };
+		626BBC1E2EC2CD9000AF73C2 /* fairydust.png in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC1D2EC2CD9000AF73C2 /* fairydust.png */; };
+		626BBC202EC2CEB100AF73C2 /* lightningshield.png in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC1F2EC2CEB100AF73C2 /* lightningshield.png */; };
+		626BBC222EC2D00200AF73C2 /* blizzardspell.png in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC212EC2D00200AF73C2 /* blizzardspell.png */; };
+		626BBC242EC2D1C400AF73C2 /* fireballspell.png in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC232EC2D1C300AF73C2 /* fireballspell.png */; };
+		626BBC262EC2D30400AF73C2 /* iceblock.png in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC252EC2D30400AF73C2 /* iceblock.png */; };
+		626BBC282EC2D54400AF73C2 /* revive.png in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC272EC2D54400AF73C2 /* revive.png */; };
+		626BBC2A2EC2D74600AF73C2 /* rapidwand.png in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC292EC2D74600AF73C2 /* rapidwand.png */; };
+		626BBC2C2EC2D8B600AF73C2 /* healthpotion.png in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC2B2EC2D8B600AF73C2 /* healthpotion.png */; };
+		626BBC2E2EC2DED500AF73C2 /* backbutton.png in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC2D2EC2DED500AF73C2 /* backbutton.png */; };
+		626BBC302EC2E5CD00AF73C2 /* AnimatedGIFView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 626BBC2F2EC2E5C100AF73C2 /* AnimatedGIFView.swift */; };
+		626BBC342EC2EA0B00AF73C2 /* loadingshop.png in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC332EC2EA0B00AF73C2 /* loadingshop.png */; };
+		626BBC362EC2ED4200AF73C2 /* loadingsound.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC352EC2ED4200AF73C2 /* loadingsound.mp3 */; };
+		627019982EC54A3F003DF132 /* WorldSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 627019972EC54A3F003DF132 /* WorldSelectionView.swift */; };
+		6270199A2EC57210003DF132 /* Adventure Map.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 627019992EC57210003DF132 /* Adventure Map.mp3 */; };
+		627423BE2EC6B0B900D5630B /* WitheringForestScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 627423BD2EC6B0B900D5630B /* WitheringForestScene.swift */; };
+		627423C02EC8378C00D5630B /* autoattacksound.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 627423BF2EC8378C00D5630B /* autoattacksound.mp3 */; };
+		627423C22EC84D4A00D5630B /* Battle.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 627423C12EC84D4A00D5630B /* Battle.mp3 */; };
+		62C24A6C2EC3F70300815F07 /* intromusic.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 62C24A6B2EC3F70300815F07 /* intromusic.mp3 */; };
+		62C24A702EC3F81D00815F07 /* IntroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62C24A6F2EC3F81D00815F07 /* IntroView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		623771B82EC0EF150033CA48 /* The Wizard's Trial.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "The Wizard's Trial.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		6247243D2EC16E48007D13C0 /* bgm.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = bgm.mp3; sourceTree = "<group>"; };
+		6247243E2EC16E48007D13C0 /* click.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = click.mp3; sourceTree = "<group>"; };
+		6247243F2EC16E48007D13C0 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		624724402EC16E48007D13C0 /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
+		624724412EC16E48007D13C0 /* mainmenu.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = mainmenu.mp3; sourceTree = "<group>"; };
+		624724422EC16E48007D13C0 /* MainMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuView.swift; sourceTree = "<group>"; };
+		624724432EC16E48007D13C0 /* menuimage.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = menuimage.png; sourceTree = "<group>"; };
+		624724442EC16E48007D13C0 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		624724452EC16E48007D13C0 /* shop.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = shop.png; sourceTree = "<group>"; };
+		624724462EC16E48007D13C0 /* stategame.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = stategame.png; sourceTree = "<group>"; };
+		624724472EC16E48007D13C0 /* title.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = title.png; sourceTree = "<group>"; };
+		624724482EC16E48007D13C0 /* Veggie_DodgerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Veggie_DodgerApp.swift; sourceTree = "<group>"; };
+		624724562EC17897007D13C0 /* loadingscreen.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = loadingscreen.png; sourceTree = "<group>"; };
+		624724582EC17C16007D13C0 /* loadscreentext.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = loadscreentext.png; sourceTree = "<group>"; };
+		6247245A2EC17E0F007D13C0 /* LoadingScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingScreenView.swift; sourceTree = "<group>"; };
+		6247245C2EC1A13A007D13C0 /* firewizard.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = firewizard.png; sourceTree = "<group>"; };
+		6247245E2EC1B030007D13C0 /* applogo.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = applogo.png; sourceTree = "<group>"; };
+		624724602EC1B340007D13C0 /* background.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = background.png; sourceTree = "<group>"; };
+		6260F2E82EC937DB00E70B6C /* EntNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntNode.swift; sourceTree = "<group>"; };
+		6260F2EA2EC963C700E70B6C /* explosion.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = explosion.wav; sourceTree = "<group>"; };
+		6260F2EC2EC9720C00E70B6C /* WoodlandElfNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WoodlandElfNode.swift; sourceTree = "<group>"; };
+		6260F2F02ECA400600E70B6C /* WoodlandDruidNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WoodlandDruidNode.swift; sourceTree = "<group>"; };
+		6260F2F42ECBCE6700E70B6C /* levelUp.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = levelUp.wav; sourceTree = "<group>"; };
+		6260F2F82ECBDC6B00E70B6C /* PlayerInventory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerInventory.swift; sourceTree = "<group>"; };
+		6260F2FA2ECBDC9E00E70B6C /* ShopItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopItem.swift; sourceTree = "<group>"; };
+		626BBBFC2EC29D1000AF73C2 /* shopmusic.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = shopmusic.mp3; sourceTree = "<group>"; };
+		626BBC022EC2A13F00AF73C2 /* shopimage.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = shopimage.png; sourceTree = "<group>"; };
+		626BBC042EC2A25F00AF73C2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		626BBC062EC2AC2A00AF73C2 /* TypewriterText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypewriterText.swift; sourceTree = "<group>"; };
+		626BBC0A2EC2B17800AF73C2 /* The-Wizard-s-Trial-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "The-Wizard-s-Trial-Info.plist"; sourceTree = "<group>"; };
+		626BBC0D2EC2B4B900AF73C2 /* Font+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Font+Theme.swift"; sourceTree = "<group>"; };
+		626BBC0F2EC2B93F00AF73C2 /* PressStart2P-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PressStart2P-Regular.ttf"; sourceTree = "<group>"; };
+		626BBC132EC2C42400AF73C2 /* ShopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopView.swift; sourceTree = "<group>"; };
+		626BBC152EC2C44800AF73C2 /* textscroll.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = textscroll.wav; sourceTree = "<group>"; };
+		626BBC192EC2CB0C00AF73C2 /* manacrystal.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = manacrystal.png; sourceTree = "<group>"; };
+		626BBC1B2EC2CC0700AF73C2 /* manashield.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = manashield.png; sourceTree = "<group>"; };
+		626BBC1D2EC2CD9000AF73C2 /* fairydust.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fairydust.png; sourceTree = "<group>"; };
+		626BBC1F2EC2CEB100AF73C2 /* lightningshield.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = lightningshield.png; sourceTree = "<group>"; };
+		626BBC212EC2D00200AF73C2 /* blizzardspell.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = blizzardspell.png; sourceTree = "<group>"; };
+		626BBC232EC2D1C300AF73C2 /* fireballspell.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fireballspell.png; sourceTree = "<group>"; };
+		626BBC252EC2D30400AF73C2 /* iceblock.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = iceblock.png; sourceTree = "<group>"; };
+		626BBC272EC2D54400AF73C2 /* revive.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = revive.png; sourceTree = "<group>"; };
+		626BBC292EC2D74600AF73C2 /* rapidwand.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = rapidwand.png; sourceTree = "<group>"; };
+		626BBC2B2EC2D8B600AF73C2 /* healthpotion.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = healthpotion.png; sourceTree = "<group>"; };
+		626BBC2D2EC2DED500AF73C2 /* backbutton.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = backbutton.png; sourceTree = "<group>"; };
+		626BBC2F2EC2E5C100AF73C2 /* AnimatedGIFView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedGIFView.swift; sourceTree = "<group>"; };
+		626BBC332EC2EA0B00AF73C2 /* loadingshop.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = loadingshop.png; sourceTree = "<group>"; };
+		626BBC352EC2ED4200AF73C2 /* loadingsound.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = loadingsound.mp3; sourceTree = "<group>"; };
+		627019972EC54A3F003DF132 /* WorldSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldSelectionView.swift; sourceTree = "<group>"; };
+		627019992EC57210003DF132 /* Adventure Map.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "Adventure Map.mp3"; sourceTree = "<group>"; };
+		627423BD2EC6B0B900D5630B /* WitheringForestScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WitheringForestScene.swift; sourceTree = "<group>"; };
+		627423BF2EC8378C00D5630B /* autoattacksound.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = autoattacksound.mp3; sourceTree = "<group>"; };
+		627423C12EC84D4A00D5630B /* Battle.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = Battle.mp3; sourceTree = "<group>"; };
+		62C24A6B2EC3F70300815F07 /* intromusic.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = intromusic.mp3; sourceTree = "<group>"; };
+		62C24A6F2EC3F81D00815F07 /* IntroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntroView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		623771B52EC0EF150033CA48 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		623771AF2EC0EF150033CA48 = {
+			isa = PBXGroup;
+			children = (
+				62C24A6B2EC3F70300815F07 /* intromusic.mp3 */,
+				627423BF2EC8378C00D5630B /* autoattacksound.mp3 */,
+				626BBC0A2EC2B17800AF73C2 /* The-Wizard-s-Trial-Info.plist */,
+				624724602EC1B340007D13C0 /* background.png */,
+				6247245C2EC1A13A007D13C0 /* firewizard.png */,
+				626BBC1D2EC2CD9000AF73C2 /* fairydust.png */,
+				626BBC1F2EC2CEB100AF73C2 /* lightningshield.png */,
+				626BBC1B2EC2CC0700AF73C2 /* manashield.png */,
+				626BBC252EC2D30400AF73C2 /* iceblock.png */,
+				626BBC2B2EC2D8B600AF73C2 /* healthpotion.png */,
+				626BBC232EC2D1C300AF73C2 /* fireballspell.png */,
+				626BBC292EC2D74600AF73C2 /* rapidwand.png */,
+				626BBC2D2EC2DED500AF73C2 /* backbutton.png */,
+				626BBC272EC2D54400AF73C2 /* revive.png */,
+				626BBC332EC2EA0B00AF73C2 /* loadingshop.png */,
+				627019992EC57210003DF132 /* Adventure Map.mp3 */,
+				6260F2FA2ECBDC9E00E70B6C /* ShopItem.swift */,
+				6260F2F82ECBDC6B00E70B6C /* PlayerInventory.swift */,
+				626BBC132EC2C42400AF73C2 /* ShopView.swift */,
+				627019972EC54A3F003DF132 /* WorldSelectionView.swift */,
+				62C24A6F2EC3F81D00815F07 /* IntroView.swift */,
+				626BBC212EC2D00200AF73C2 /* blizzardspell.png */,
+				626BBC352EC2ED4200AF73C2 /* loadingsound.mp3 */,
+				6260F2E82EC937DB00E70B6C /* EntNode.swift */,
+				6247245A2EC17E0F007D13C0 /* LoadingScreenView.swift */,
+				624724422EC16E48007D13C0 /* MainMenuView.swift */,
+				626BBC192EC2CB0C00AF73C2 /* manacrystal.png */,
+				6247243F2EC16E48007D13C0 /* ContentView.swift */,
+				6260F2F42ECBCE6700E70B6C /* levelUp.wav */,
+				6260F2F02ECA400600E70B6C /* WoodlandDruidNode.swift */,
+				624724402EC16E48007D13C0 /* GameScene.swift */,
+				624724442EC16E48007D13C0 /* RootView.swift */,
+				6260F2EC2EC9720C00E70B6C /* WoodlandElfNode.swift */,
+				627423BD2EC6B0B900D5630B /* WitheringForestScene.swift */,
+				626BBC2F2EC2E5C100AF73C2 /* AnimatedGIFView.swift */,
+				6260F2EA2EC963C700E70B6C /* explosion.wav */,
+				626BBC062EC2AC2A00AF73C2 /* TypewriterText.swift */,
+				626BBC042EC2A25F00AF73C2 /* Assets.xcassets */,
+				627423C12EC84D4A00D5630B /* Battle.mp3 */,
+				626BBC022EC2A13F00AF73C2 /* shopimage.png */,
+				6247245E2EC1B030007D13C0 /* applogo.png */,
+				6247243D2EC16E48007D13C0 /* bgm.mp3 */,
+				6247243E2EC16E48007D13C0 /* click.mp3 */,
+				624724412EC16E48007D13C0 /* mainmenu.mp3 */,
+				626BBBFC2EC29D1000AF73C2 /* shopmusic.mp3 */,
+				624724562EC17897007D13C0 /* loadingscreen.png */,
+				624724582EC17C16007D13C0 /* loadscreentext.png */,
+				624724432EC16E48007D13C0 /* menuimage.png */,
+				624724452EC16E48007D13C0 /* shop.png */,
+				624724462EC16E48007D13C0 /* stategame.png */,
+				624724472EC16E48007D13C0 /* title.png */,
+				624724482EC16E48007D13C0 /* Veggie_DodgerApp.swift */,
+				626BBC0D2EC2B4B900AF73C2 /* Font+Theme.swift */,
+				626BBC0F2EC2B93F00AF73C2 /* PressStart2P-Regular.ttf */,
+				626BBC152EC2C44800AF73C2 /* textscroll.wav */,
+				623771B92EC0EF150033CA48 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		623771B92EC0EF150033CA48 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				623771B82EC0EF150033CA48 /* The Wizard's Trial.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		623771B72EC0EF150033CA48 /* The Wizard's Trial */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 623771C32EC0EF170033CA48 /* Build configuration list for PBXNativeTarget "The Wizard's Trial" */;
+			buildPhases = (
+				623771B42EC0EF150033CA48 /* Sources */,
+				623771B52EC0EF150033CA48 /* Frameworks */,
+				623771B62EC0EF150033CA48 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "The Wizard's Trial";
+			packageProductDependencies = (
+			);
+			productName = "Veggie Dodger";
+			productReference = 623771B82EC0EF150033CA48 /* The Wizard's Trial.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		623771B02EC0EF150033CA48 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2610;
+				LastUpgradeCheck = 2610;
+				TargetAttributes = {
+					623771B72EC0EF150033CA48 = {
+						CreatedOnToolsVersion = 26.1;
+						LastSwiftMigration = 2610;
+					};
+				};
+			};
+			buildConfigurationList = 623771B32EC0EF150033CA48 /* Build configuration list for PBXProject "The Wizard's Trial" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 623771AF2EC0EF150033CA48;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 623771B92EC0EF150033CA48 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				623771B72EC0EF150033CA48 /* The Wizard's Trial */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		623771B62EC0EF150033CA48 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6247245F2EC1B030007D13C0 /* applogo.png in Resources */,
+				626BBC162EC2C44800AF73C2 /* textscroll.wav in Resources */,
+				624724492EC16E48007D13C0 /* click.mp3 in Resources */,
+				626BBBFD2EC29D1100AF73C2 /* shopmusic.mp3 in Resources */,
+				626BBC1A2EC2CB0C00AF73C2 /* manacrystal.png in Resources */,
+				626BBC2C2EC2D8B600AF73C2 /* healthpotion.png in Resources */,
+				626BBC032EC2A13F00AF73C2 /* shopimage.png in Resources */,
+				626BBC1C2EC2CC0700AF73C2 /* manashield.png in Resources */,
+				626BBC2A2EC2D74600AF73C2 /* rapidwand.png in Resources */,
+				626BBC202EC2CEB100AF73C2 /* lightningshield.png in Resources */,
+				626BBC2E2EC2DED500AF73C2 /* backbutton.png in Resources */,
+				626BBC282EC2D54400AF73C2 /* revive.png in Resources */,
+				626BBC052EC2A25F00AF73C2 /* Assets.xcassets in Resources */,
+				626BBC242EC2D1C400AF73C2 /* fireballspell.png in Resources */,
+				627423C22EC84D4A00D5630B /* Battle.mp3 in Resources */,
+				626BBC262EC2D30400AF73C2 /* iceblock.png in Resources */,
+				624724612EC1B340007D13C0 /* background.png in Resources */,
+				624724592EC17C16007D13C0 /* loadscreentext.png in Resources */,
+				626BBC342EC2EA0B00AF73C2 /* loadingshop.png in Resources */,
+				624724572EC17897007D13C0 /* loadingscreen.png in Resources */,
+				6247244B2EC16E48007D13C0 /* stategame.png in Resources */,
+				6247244C2EC16E48007D13C0 /* bgm.mp3 in Resources */,
+				6247245D2EC1A13A007D13C0 /* firewizard.png in Resources */,
+				627423C02EC8378C00D5630B /* autoattacksound.mp3 in Resources */,
+				626BBC1E2EC2CD9000AF73C2 /* fairydust.png in Resources */,
+				6247244D2EC16E48007D13C0 /* menuimage.png in Resources */,
+				6247244E2EC16E48007D13C0 /* mainmenu.mp3 in Resources */,
+				626BBC362EC2ED4200AF73C2 /* loadingsound.mp3 in Resources */,
+				6247244F2EC16E48007D13C0 /* shop.png in Resources */,
+				6260F2F52ECBCE6700E70B6C /* levelUp.wav in Resources */,
+				6270199A2EC57210003DF132 /* Adventure Map.mp3 in Resources */,
+				6260F2EB2EC963C700E70B6C /* explosion.wav in Resources */,
+				626BBC222EC2D00200AF73C2 /* blizzardspell.png in Resources */,
+				626BBC102EC2B93F00AF73C2 /* PressStart2P-Regular.ttf in Resources */,
+				624724502EC16E48007D13C0 /* title.png in Resources */,
+				62C24A6C2EC3F70300815F07 /* intromusic.mp3 in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		623771B42EC0EF150033CA48 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				627019982EC54A3F003DF132 /* WorldSelectionView.swift in Sources */,
+				6260F2E92EC937DB00E70B6C /* EntNode.swift in Sources */,
+				627423BE2EC6B0B900D5630B /* WitheringForestScene.swift in Sources */,
+				6260F2ED2EC9720C00E70B6C /* WoodlandElfNode.swift in Sources */,
+				624724512EC16E48007D13C0 /* MainMenuView.swift in Sources */,
+				624724522EC16E48007D13C0 /* ContentView.swift in Sources */,
+				626BBC072EC2AC2A00AF73C2 /* TypewriterText.swift in Sources */,
+				626BBC142EC2C42400AF73C2 /* ShopView.swift in Sources */,
+				6260F2F12ECA400F00E70B6C /* WoodlandDruidNode.swift in Sources */,
+				624724532EC16E48007D13C0 /* GameScene.swift in Sources */,
+				626BBC0E2EC2B4BE00AF73C2 /* Font+Theme.swift in Sources */,
+				6260F2F92ECBDC6B00E70B6C /* PlayerInventory.swift in Sources */,
+				626BBC302EC2E5CD00AF73C2 /* AnimatedGIFView.swift in Sources */,
+				624724542EC16E48007D13C0 /* Veggie_DodgerApp.swift in Sources */,
+				6260F2FB2ECBDC9E00E70B6C /* ShopItem.swift in Sources */,
+				624724552EC16E48007D13C0 /* RootView.swift in Sources */,
+				62C24A702EC3F81D00815F07 /* IntroView.swift in Sources */,
+				6247245B2EC17E15007D13C0 /* LoadingScreenView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		623771C12EC0EF170033CA48 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 32U2KGHRJV;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		623771C22EC0EF170033CA48 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 32U2KGHRJV;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		623771C42EC0EF170033CA48 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 32U2KGHRJV;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "The-Wizard-s-Trial-Info.plist";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "veggie.main.Veggie-Dodger";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		623771C52EC0EF170033CA48 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 32U2KGHRJV;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "The-Wizard-s-Trial-Info.plist";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "veggie.main.Veggie-Dodger";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		623771B32EC0EF150033CA48 /* Build configuration list for PBXProject "The Wizard's Trial" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				623771C12EC0EF170033CA48 /* Debug */,
+				623771C22EC0EF170033CA48 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		623771C32EC0EF170033CA48 /* Build configuration list for PBXNativeTarget "The Wizard's Trial" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				623771C42EC0EF170033CA48 /* Debug */,
+				623771C52EC0EF170033CA48 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 623771B02EC0EF150033CA48 /* Project object */;
+}
