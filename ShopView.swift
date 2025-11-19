@@ -1,33 +1,16 @@
 import SwiftUI
 import AVFoundation
 
-// ✅ Use your asset names (lowercase, no spaces)
-private let shopItems: [ShopItem] = [
-    .init(imageName: "healthpotion",    name: "Health Potion",    price: 20, desc: "A staple in any wizard’s pack. Restores a modest portion of vitality."),
-    .init(imageName: "manacrystal",     name: "Mana Crystal",     price: 30, desc: "Crackling with latent arcana. Restores your inner reserves of power."),
-    .init(imageName: "manashield",      name: "Mana Shield",      price: 25, desc: "A ward of pure ether. Absorbs minor harm before it reaches you."),
-    .init(imageName: "fairydust",       name: "Fairy Dust",       price: 40, desc: "Bottled wonder from ancient groves. Enhances agility for a short time."),
-    .init(imageName: "lightningshield", name: "Lightning Shield", price: 60, desc: "A stormbound aegis. Zaps nearby foes that dare approach."),
-    .init(imageName: "rapidwand",       name: "Rapid Wand",       price: 55, desc: "Light as a reed; swift as thought. Increases casting speed."),
-    .init(imageName: "blizzardspell",   name: "Blizzard Spell",   price: 45, desc: "Invoke the Northwind. Unleash freezing shards upon your enemies."),
-    .init(imageName: "fireballspell",   name: "Fire Ball Spell",  price: 35, desc: "Old faithful of battlemages. Hurls a blazing orb at your target."),
-    .init(imageName: "iceblock",        name: "Ice Block",        price: 35, desc: "Become encased in frost to shrug off danger—for a moment."),
-    .init(imageName: "revive",          name: "Revive",           price: 75, desc: "An angelic boon. Pulls you back from the brink once per run.")
-]
-
-// MARK: - ShopView
-
 struct ShopView: View {
     let onExit: () -> Void
 
-    @EnvironmentObject var inventory: PlayerInventory   // ⬅️ shared inventory
+    @EnvironmentObject var inventory: PlayerInventory
 
     @State private var bgmPlayer: AVAudioPlayer?
     @State private var flicker: Double = 1.0
     @State private var parallaxOffset: CGFloat = 0
     @State private var showItems = false
 
-    // Modal state
     @State private var selectedItem: ShopItem? = nil
     @State private var showingDetail = false
 
@@ -35,7 +18,8 @@ struct ShopView: View {
 
     var body: some View {
         ZStack {
-            // ===== Background =====
+
+            // ===== Background & HUD =====
             GeometryReader { geo in
                 Image("shopimage")
                     .resizable()
@@ -47,15 +31,15 @@ struct ShopView: View {
                     .clipped()
                     .ignoresSafeArea()
 
-                // ===== HUD =====
                 VStack(spacing: 12) {
-                    // Back button (hanging sign image)
+                    // Top row: back button + coins
                     HStack {
+                        // Back button
                         Button {
                             stopMusic()
                             onExit()
                         } label: {
-                            Image("backbutton") // your oakwood hanging sign with left arrow
+                            Image("backbutton")
                                 .resizable()
                                 .interpolation(.none)
                                 .scaledToFit()
@@ -69,30 +53,23 @@ struct ShopView: View {
 
                         Spacer()
 
-                        // 🔹 Total coins display (top-right)
-                        HStack(spacing: 6) {
-                            Image(systemName: "circle.grid.3x3.fill")
-                                .font(.system(size: 12))
-                                .foregroundColor(.yellow)
-
-                            Text("\(inventory.coins)")
-                                .font(.custom("PressStart2P-Regular", size: 12))
-                                .foregroundColor(.yellow)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.black.opacity(0.7))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                                )
-                        )
-                        .padding(.trailing, 16)
-                        .padding(.top, 4)
+                        // Coins display (permanent)
+                        Text("COINS: \(inventory.coins)")
+                            .font(.custom("PressStart2P-Regular", size: 12))
+                            .foregroundColor(.yellow)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.black.opacity(0.7))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(Color.white.opacity(0.3), lineWidth: 2)
+                                    )
+                            )
+                            .padding(.trailing, 16)
+                            .padding(.top, 12)
                     }
-                    .padding(.top, 44)
                     .zIndex(3)
 
                     // Chat box
@@ -151,18 +128,33 @@ struct ShopView: View {
 
                 ItemDetailView(
                     item: item,
-                    onClose: { dismissDetail() }, inventory: _inventory
+                    currentCoins: inventory.coins,        // ✅ use inventory.coins here
+                    onClose: { dismissDetail() },
+                    onBuy: { shopItem in
+                        if inventory.tryBuy(shopItem) {
+                            // success: item added to inventory + coins deducted
+                            dismissDetail()
+                        } else {
+                            // TODO: feedback for can't afford / inventory full
+                        }
+                    }
                 )
                 .transition(.scale.combined(with: .opacity))
                 .zIndex(3)
             }
         }
-        .onAppear { startAnimations(); playMusic() }
-        .onDisappear { stopMusic() }
+        .onAppear {
+            startAnimations()
+            playMusic()
+        }
+        .onDisappear {
+            stopMusic()
+        }
     }
 
     // MARK: - Bottom Gallery
 
+    @ViewBuilder
     private func bottomGallery(width: CGFloat, height: CGFloat) -> some View {
         let horizontalPadding: CGFloat = 16
         let spacing: CGFloat = 10
@@ -170,7 +162,7 @@ struct ShopView: View {
         let cardWidth = floor(available / 3)
         let cardHeight = cardWidth * 1.25
 
-        return VStack(spacing: 8) {
+        VStack(spacing: 8) {
             Spacer()
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: spacing) {
@@ -272,17 +264,15 @@ struct ShopView: View {
     }
 }
 
-// MARK: - Item Detail Card
-
+// ===== Item Detail Card =====
 private struct ItemDetailView: View {
     let item: ShopItem
+    let currentCoins: Int
     let onClose: () -> Void
-    
-    @EnvironmentObject var inventory: PlayerInventory
+    let onBuy: (ShopItem) -> Void
 
     var body: some View {
         VStack(spacing: 14) {
-            // Art
             Image(item.imageName)
                 .resizable()
                 .interpolation(.none)
@@ -290,16 +280,18 @@ private struct ItemDetailView: View {
                 .frame(width: 120, height: 120)
                 .shadow(color: .black.opacity(0.5), radius: 8, x: 0, y: 3)
 
-            // Title & price
             Text(item.name.uppercased())
                 .font(.custom("PressStart2P-Regular", size: 14))
                 .foregroundColor(.white)
 
-            Text("COINS: \(inventory.coins)")
+            Text("\(item.price) COINS")
                 .font(.custom("PressStart2P-Regular", size: 12))
                 .foregroundColor(.yellow)
 
-            // Lore / description
+            Text("You have: \(currentCoins)")
+                .font(.custom("PressStart2P-Regular", size: 10))
+                .foregroundColor(.white.opacity(0.8))
+
             Text(item.desc)
                 .font(.custom("PressStart2P-Regular", size: 10))
                 .foregroundColor(.white)
@@ -316,20 +308,14 @@ private struct ItemDetailView: View {
                 }
                 .buttonStyle(.bordered)
 
-                Button(action: {
-                    if inventory.tryBuy(item) {
-                        onClose()
-                    } else {
-                        // Optional: show "not enough coins" feedback
-                    }
-                }) {
-                    Text("BUY")
+                Button(action: { onBuy(item) }) {
+                    Text(item.price <= currentCoins ? "BUY" : "CAN'T AFFORD")
                         .font(.custom("PressStart2P-Regular", size: 12))
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                 }
                 .buttonStyle(.borderedProminent)
-
+                .disabled(item.price > currentCoins)
             }
             .padding(.top, 6)
         }

@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct Veggie_DodgerApp: App {
-    @StateObject private var inventory = PlayerInventory()
+    @StateObject private var inventory = PlayerInventory.shared
 
     var body: some Scene {
         WindowGroup {

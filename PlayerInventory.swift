@@ -8,76 +8,75 @@
 import Foundation
 import Combine
 
-/// Global player inventory: permanent coins + items.
 final class PlayerInventory: ObservableObject {
+    static let shared = PlayerInventory()
 
-    private static let coinsKey = "WT_totalCoins"
-    private static let itemsKey = "WT_items"
-
-    /// Permanent coins (persists across runs & app restarts)
-    @Published var coins: Int {
+    // Permanent coins
+    @Published private(set) var coins: Int {
         didSet {
-            UserDefaults.standard.set(coins, forKey: Self.coinsKey)
+            UserDefaults.standard.set(coins, forKey: "WT_totalCoins")
         }
     }
 
-    /// Items owned (now also persisted)
-    @Published var items: [ShopItem] {
-        didSet {
-            saveItems()
-        }
+    // 16 inventory slots
+    @Published var slots: [ShopItem?]
+
+    // 3 quick slots
+    @Published var quickSlots: [ShopItem?]
+
+    private init() {
+        self.coins = UserDefaults.standard.integer(forKey: "WT_totalCoins")
+        self.slots = Array(repeating: nil, count: 16)
+        self.quickSlots = Array(repeating: nil, count: 3)
     }
 
-    init() {
-        // Load coins from UserDefaults (0 if none saved yet)
-        let storedCoins = UserDefaults.standard.integer(forKey: Self.coinsKey)
-        self.coins = storedCoins
+    // MARK: - Coins
 
-        // Load items from UserDefaults
-        self.items = PlayerInventory.loadItems()
-    }
-
-    // MARK: - Persistence
-
-    private static func loadItems() -> [ShopItem] {
-        guard let data = UserDefaults.standard.data(forKey: itemsKey) else {
-            return []
-        }
-        do {
-            let decoded = try JSONDecoder().decode([ShopItem].self, from: data)
-            return decoded
-        } catch {
-            print("❌ Failed to decode saved items:", error)
-            return []
-        }
-    }
-
-    private func saveItems() {
-        do {
-            let data = try JSONEncoder().encode(items)
-            UserDefaults.standard.set(data, forKey: Self.itemsKey)
-        } catch {
-            print("❌ Failed to encode items:", error)
-        }
-    }
-
-    // MARK: - API
-
-    /// Adds coins permanently
     func addCoins(_ amount: Int) {
         guard amount > 0 else { return }
         coins += amount
-        // didSet already saves to UserDefaults
     }
 
-    /// Try to buy an item; returns true if purchase succeeded
-    @discardableResult
     func tryBuy(_ item: ShopItem) -> Bool {
-        guard coins >= item.price else {
-            return false
-        }
+        guard coins >= item.price else { return false }
         coins -= item.price
-        items.append(item)   // triggers saveItems()
+        addItem(item)
         return true
+    }
+
+    // MARK: - Inventory items
+
+    func addItem(_ item: ShopItem) {
+        if let emptyIndex = slots.firstIndex(where: { $0 == nil }) {
+            slots[emptyIndex] = item
+        } else {
+            // Inventory full – for now, silently ignore
+            print("⚠️ Inventory full, could not add \(item.name)")
+        }
+    }
+
+    func destroy(_ item: ShopItem) {
+        // Remove from main slots
+        if let idx = slots.firstIndex(where: { $0?.id == item.id }) {
+            slots[idx] = nil
+        }
+
+        // Also unequip from quick slots if present
+        for i in 0..<quickSlots.count {
+            if quickSlots[i]?.id == item.id {
+                quickSlots[i] = nil
+            }
+        }
+    }
+
+    func consume(_ item: ShopItem) {
+        destroy(item)
+    }
+
+    // MARK: - Quick slots
+
+    func equip(_ item: ShopItem, to slotIndex: Int) {
+        guard (0..<quickSlots.count).contains(slotIndex) else { return }
+        quickSlots[slotIndex] = item
     }
 }
