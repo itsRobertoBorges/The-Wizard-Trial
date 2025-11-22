@@ -21,6 +21,21 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: Waves
     // --------------------------------------------------------
 
+    // === GLOBAL SPELL COOLDOWNS ===
+    // Stores:  "manashield": TimeInterval  , etc.
+    private var spellCooldowns: [String: TimeInterval] = [
+        "manashield": 0,
+        "lightningshield": 0,
+        "rapidwand": 0,
+        "blizzard": 0,
+        "fireball": 0
+    ]
+    
+    // === Cooldown Timer Tick ===
+    private func isSpellReady(_ name: String) -> Bool {
+        return spellCooldowns[name, default: 0] == 0
+    }
+    
     private struct WaveConfig {
         let ents: Int
         let elves: Int
@@ -45,6 +60,89 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         case right
         case cast
     }
+    
+        //Spells
+    private var manaShieldNode: SKNode?
+ 
+    private var stormAuraNode: SKNode?
+    private var isStormAuraActive: Bool = false
+    private var stormAuraDamageAccumulator: TimeInterval = 0
+
+    private var isRapidWandActive: Bool = false
+    
+    // Blizzard spell
+    private var isBlizzardActive: Bool = false
+    private var blizzardNodeContainer = SKNode()
+    private var blizzardDamageAccumulator: TimeInterval = 0
+    private var blizzardSlowMultiplier: CGFloat = 1.0
+    
+    // Fireball spell
+    private var fireballIsActive = false   // prevents spamming if needed
+
+    // ICE BLOCK
+    private var isIceBlockActive = false
+    private var iceBlockNode: SKSpriteNode?
+    private var iceBlockInvulnerable = false
+    private var savedAttackMultiplier: CGFloat = 1.0
+    private var savedMovementVector = CGVector(dx: 0, dy: 0)
+    
+    private var iceBlockDamageAccumulator: TimeInterval = 0
+    
+    //mana spending
+    private let manaSpendSubject = PassthroughSubject<CGFloat, Never>()
+    var manaSpendPublisher: AnyPublisher<CGFloat, Never> {
+        manaSpendSubject.eraseToAnyPublisher()
+    }
+
+    
+    // Revive
+    public func runReviveEffect() {
+        let aura = SKShapeNode(circleOfRadius: fingerRadius * 2.5)
+        aura.fillColor = UIColor.yellow.withAlphaComponent(0.3)
+        aura.strokeColor = UIColor.white.withAlphaComponent(0.9)
+        aura.lineWidth = 4
+        aura.glowWidth = 12
+        aura.zPosition = 999
+        aura.position = fingerNode.position
+
+        addChild(aura)
+
+        let grow = SKAction.scale(to: 1.8, duration: 0.5)
+        let fade = SKAction.fadeOut(withDuration: 0.5)
+
+        aura.run(.sequence([.group([grow, fade]), .removeFromParent()]))
+    }
+    
+    private var revivePlayer: AVAudioPlayer?
+    func playReviveSound() {
+        if let url = Bundle.main.url(forResource: "revivesoundeffect", withExtension: "wav") {
+            do {
+                let p = try AVAudioPlayer(contentsOf: url)
+                p.volume = 6.0   // FULL VOLUME BOOST
+                p.play()
+                revivePlayer = p
+            } catch {
+                print("revive sound error:", error)
+            }
+        }
+    }
+
+    //Game Over
+    public func triggerGameOver() {
+        isGameOver = true
+        isPaused = true
+    }
+
+    public func cancelGameOverState() {
+        isGameOver = false
+        isPaused = false
+    }
+
+    
+
+
+
+
     
     // Mute or not to mute
     private var isMuted = false
@@ -110,6 +208,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // Missile
     private var lastFireTime: TimeInterval = -1_000
     private let minFireInterval: TimeInterval = 0.18
+    private var attackSpeedMultiplier: CGFloat = 1.0
+    
 
     // ENT enemies
     private var ents: [EntNode] = []
@@ -148,6 +248,29 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             ]))
         }
     }
+    
+    private func trySpendMana(_ amount: CGFloat) -> Bool {
+        manaSpendSubject.send(amount)
+        return true
+    }
+
+
+    
+    // End Gamescene music on exit
+    public func stopSceneCompletely() {
+        // Stop all actions
+        removeAllActions()
+
+        // Remove all children (missiles, enemies, shield, etc.)
+        children.forEach { $0.removeAllActions() }
+        removeAllChildren()
+
+        // Stop and reset music
+        bgmPlayer?.stop()
+        bgmPlayer?.currentTime = 0
+        bgmPlayer?.volume = 1.0
+    }
+
 
     override func didChangeSize(_ oldSize: CGSize) {
         layoutBackground()
@@ -216,9 +339,64 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // --------------------------------------------------------
 
     //level up sound
+    // Level up (you already have this)
     public func playLevelUpSound() {
-           run(.playSoundFileNamed("levelUp.wav", waitForCompletion: false))
-       }
+        run(.playSoundFileNamed("levelUp.wav", waitForCompletion: false))
+    }
+
+    // 🔊 Health potion
+    func playHealSound() {
+        let action = SKAction.playSoundFileNamed("healingpotion.wav", waitForCompletion: false)
+        run(action)
+    }
+
+    // 🔊 Mana crystal / power-up
+    func playPowerUpSound() {
+        let action = SKAction.playSoundFileNamed("powerUp.wav", waitForCompletion: false)
+        run(action)
+    }
+
+    // 🔊 Mana shield takes a hit
+    func playManaShieldHitSound() {
+        let action = SKAction.playSoundFileNamed("manashieldhit.wav", waitForCompletion: false)
+        run(action)
+    }
+    
+    func playFairyDustSound() {
+        let action = SKAction.playSoundFileNamed("fairydust.wav", waitForCompletion: false)
+        run(action)
+        
+        // ✨ Golden aura around the wizard
+            // Base radius off wizard size
+            let wizardWidth  = wizardNode.frame.width
+            let wizardHeight = wizardNode.frame.height
+            let wizardDiameter = max(wizardWidth, wizardHeight)
+
+            let auraRadius = wizardDiameter * 13.8   // tweak if you want bigger/smaller
+            let aura = SKShapeNode(circleOfRadius: auraRadius)
+
+            aura.fillColor = UIColor.yellow.withAlphaComponent(0.35)
+            aura.strokeColor = UIColor.orange.withAlphaComponent(0.8)
+            aura.lineWidth = 4
+            aura.zPosition = 80
+            aura.glowWidth = 12
+            aura.blendMode = .add
+
+            aura.position = .zero
+            wizardNode.addChild(aura)
+
+            // Scale + fade animation
+            let grow = SKAction.scale(to: 1.4, duration: 0.45)
+            let fade = SKAction.fadeOut(withDuration: 0.45)
+            let group = SKAction.group([grow, fade])
+
+            aura.run(.sequence([group, .removeFromParent()]))
+    }
+    
+    func playLightningSpellSound(){
+        let action = SKAction.playSoundFileNamed("lightningspell.wav", waitForCompletion: false)
+        run(action)
+    }
 
     private func startNextWave() {
         currentWaveIndex += 1
@@ -485,10 +663,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // --------------------------------------------------------
 
     private func fireMissile(toward target: CGPoint, atTime now: TimeInterval) {
-        if now - lastFireTime < minFireInterval { return }
+        if now - lastFireTime < (minFireInterval / attackSpeedMultiplier) { return }
         lastFireTime = now
 
-        run(.playSoundFileNamed("autoattacksound.mp3", waitForCompletion: false))
+        if isRapidWandActive {
+            run(.playSoundFileNamed("rapidshoot.wav", waitForCompletion: false))
+        } else {
+            run(.playSoundFileNamed("autoattacksound.mp3", waitForCompletion: false))
+        }
+
 
         let start = fingerNode.position
         let dx = target.x - start.x
@@ -498,11 +681,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let uy = dy / len
 
         let r: CGFloat = 8
-        let missile = SKSpriteNode(imageNamed: "autoshoot")
+        let projectileName = isRapidWandActive ? "rapid_orb" : "autoshoot"
+
+        let missile = SKSpriteNode(imageNamed: projectileName)
         missile.texture?.filteringMode = .nearest
         missile.size = CGSize(width: r * 6, height: r * 6)
         missile.position = start
         missile.zPosition = 6
+
 
         let body = SKPhysicsBody(circleOfRadius: r)
         body.isDynamic = true
@@ -543,6 +729,13 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         let dt = min(currentTime - lastUpdate, 1/30)
         lastUpdate = currentTime
+        
+        //cool down
+        for (spell, timeLeft) in spellCooldowns {
+            if timeLeft > 0 {
+                spellCooldowns[spell] = max(0, timeLeft - dt)
+            }
+        }
 
         // Movement
         let step = moveSpeed * CGFloat(dt)
@@ -550,9 +743,167 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         fingerNode.position.y += movementInput.dy * step
 
         // Bounds
-        let margin: CGFloat = 40
+        let margin: CGFloat = 10
         fingerNode.position.x = max(margin, min(size.width - margin, fingerNode.position.x))
         fingerNode.position.y = max(margin, min(size.height - margin, fingerNode.position.y))
+        
+        if isBlizzardActive {
+            blizzardDamageAccumulator += dt
+
+            while blizzardDamageAccumulator >= 0.2 {   // every 0.2 sec
+                blizzardDamageAccumulator -= 0.2
+
+                for ent in ents {
+                    let d = hypot(ent.position.x - fingerNode.position.x,
+                                  ent.position.y - fingerNode.position.y)
+                    // Blizzard radius: whole screen
+                    let died = ent.takeDamage(20)
+                    if died { awardXP(20); entKillSubject.send(1) }
+                    ent.speedMultiplier = blizzardSlowMultiplier
+                }
+
+                for elf in woodlandElves {
+                    let died = elf.takeDamage(20)
+                    if died { awardXP(15); elfKillSubject.send(1) }
+                    elf.speedMultiplier = blizzardSlowMultiplier
+                }
+
+                for druid in woodlandDruids {
+                    let died = druid.takeDamage(20)
+                    if died { awardXP(30); druidKillSubject.send(1) }
+                    druid.speedMultiplier = blizzardSlowMultiplier
+                }
+            }
+        }
+
+        // ===== FIREBALL BOUNCING =====
+        for node in children {
+            guard let sprite = node as? SKSpriteNode else { continue }
+            if sprite.texture?.description.contains("fireball") != true { continue }
+
+            guard let body = sprite.physicsBody else { continue }
+
+            var bounces = sprite.userData?["bounces"] as? Int ?? 0
+
+            // Check horizontal screen bounds
+            if sprite.position.x <= 20 || sprite.position.x >= size.width - 20 {
+                body.velocity.dx = -body.velocity.dx
+                bounces += 1
+            }
+
+            // Check vertical bounds
+            if sprite.position.y <= 20 || sprite.position.y >= size.height - 20 {
+                body.velocity.dy = -body.velocity.dy
+                bounces += 1
+            }
+
+            sprite.userData?["bounces"] = bounces
+
+            if bounces >= 8 {
+                // Fade out → remove
+                sprite.run(.sequence([
+                    .fadeOut(withDuration: 0.2),
+                    .removeFromParent()
+                ]))
+            }
+        }
+
+       
+        // === Storm aura damage over time ===
+        if isStormAuraActive {
+            stormAuraDamageAccumulator += dt
+
+            // 100 DPS → 10 damage every 0.1 seconds
+            while stormAuraDamageAccumulator >= 0.1 {
+                stormAuraDamageAccumulator -= 0.1
+
+                // Smaller damage radius
+                let auraRadius: CGFloat = 10
+
+                let center = fingerNode.position
+
+                // ENT damage
+                for ent in ents {
+                    guard ent.parent != nil else { continue }
+                    let d = hypot(ent.position.x - center.x, ent.position.y - center.y)
+                    if d <= auraRadius {
+                        let died = ent.takeDamage(10)
+                        if died {
+                            awardXP(25)
+                            entKillSubject.send(1)
+                        }
+                    }
+                }
+
+                // ELF damage
+                for elf in woodlandElves {
+                    guard elf.parent != nil else { continue }
+                    let d = hypot(elf.position.x - center.x, elf.position.y - center.y)
+                    if d <= auraRadius {
+                        let died = elf.takeDamage(10)
+                        if died {
+                            awardXP(20)
+                            elfKillSubject.send(1)
+                        }
+                    }
+                }
+
+                // DRUID damage
+                for druid in woodlandDruids {
+                    guard druid.parent != nil else { continue }
+                    let d = hypot(druid.position.x - center.x, druid.position.y - center.y)
+                    if d <= auraRadius {
+                        let died = druid.takeDamage(10)
+                        if died {
+                            awardXP(40)
+                            druidKillSubject.send(1)
+                        }
+                    }
+                }
+            }
+        }
+        
+        // === ICE BLOCK CONTACT DAMAGE ===
+        if isIceBlockActive {
+            // damage rate = 20 DPS → 2 damage every 0.1 sec
+            iceBlockDamageAccumulator += dt
+
+            while iceBlockDamageAccumulator >= 0.1 {
+                iceBlockDamageAccumulator -= 0.1
+                
+                let center = fingerNode.position
+                let radius: CGFloat = max(wizardNode.frame.width, wizardNode.frame.height) * 0.8
+
+                // ENT
+                for ent in ents {
+                    let d = hypot(ent.position.x - center.x, ent.position.y - center.y)
+                    if d <= radius {
+                        let died = ent.takeDamage(20)
+                        if died { awardXP(25); entKillSubject.send(1) }
+                    }
+                }
+
+                // ELF
+                for elf in woodlandElves {
+                    let d = hypot(elf.position.x - center.x, elf.position.y - center.y)
+                    if d <= radius {
+                        let died = elf.takeDamage(2)
+                        if died { awardXP(20); elfKillSubject.send(1) }
+                    }
+                }
+
+                // DRUID
+                for druid in woodlandDruids {
+                    let d = hypot(druid.position.x - center.x, druid.position.y - center.y)
+                    if d <= radius {
+                        let died = druid.takeDamage(20)
+                        if died { awardXP(40); druidKillSubject.send(1) }
+                    }
+                }
+            }
+        }
+
+        
 
         // Move ents toward player
         for ent in ents {
@@ -628,6 +979,418 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
     
+    private func deactivateIceBlock() {
+        guard isIceBlockActive else { return }
+
+        isIceBlockActive = false
+        iceBlockInvulnerable = false
+
+        // Restore movement + attacks
+        attackSpeedMultiplier = savedAttackMultiplier
+
+        // Remove visuals
+        iceBlockNode?.removeFromParent()
+        iceBlockNode = nil
+
+        if let glow = wizardNode.childNode(withName: "iceblockGlow") {
+            glow.removeFromParent()
+        }
+    }
+    
+    public func tryCastFireball() {
+        guard trySpendMana(15) == true else {
+            run(.playSoundFileNamed("notenoughmana.wav", waitForCompletion: false))
+            return
+        }
+
+        castFireball()
+    }
+
+    
+    public func castFireball() {
+        guard !isGameOver else { return }
+
+        // Get analog direction (movement stick)
+        let dx = movementInput.dx
+        let dy = movementInput.dy
+        let mag = hypot(dx, dy)
+
+        // Ensure the player is actually aiming
+        guard mag > 0.2 else { return }
+        
+        guard trySpendMana(15) else { return }
+        guard isSpellReady("fireball") else { return }
+
+
+        // Normalize direction
+        let ux = dx / mag
+        let uy = dy / mag
+
+        spawnFireball(ux: ux, uy: uy)
+    }
+
+    private func spawnFireball(ux: CGFloat, uy: CGFloat) {
+
+        let speed: CGFloat = 520
+        let fireballSize: CGFloat = 42   // adjust if needed
+
+        let fb = SKSpriteNode(imageNamed: "fireball")
+        fb.zPosition = 100
+        fb.position = fingerNode.position
+        fb.setScale(fireballSize / max(fb.size.width, fb.size.height))
+        fb.blendMode = .add
+        fb.alpha = 0.95
+
+        // Keep track of bounces
+        fb.userData = ["bounces": 0]
+
+        // Physics
+        let body = SKPhysicsBody(circleOfRadius: fireballSize * 0.4)
+        body.isDynamic = true
+        body.affectedByGravity = false
+        body.categoryBitMask = Cat.missile
+        body.collisionBitMask = 0
+        body.contactTestBitMask = Cat.ent | Cat.elf | Cat.druid
+        body.linearDamping = 0
+        fb.physicsBody = body
+
+        body.velocity = CGVector(dx: ux * speed, dy: uy * speed)
+
+        addChild(fb)
+    }
+    
+    public func tryActivateIceBlock() {
+        guard trySpendMana(35) == true else {
+            run(.playSoundFileNamed("notenoughmana.wav", waitForCompletion: false))
+            return
+        }
+
+        activateIceBlock()
+    }
+
+    
+    public func activateIceBlock() {
+        guard !isIceBlockActive else { return }
+
+        isIceBlockActive = true
+        iceBlockInvulnerable = true
+
+        // Save values
+        savedMovementVector = movementInput
+        savedAttackMultiplier = attackSpeedMultiplier
+        
+        guard trySpendMana(35) else { return }
+        guard isSpellReady("iceblock") else { return }
+
+
+        // Freeze movement + attacks
+        movementInput = .zero
+        attackInput = .zero
+        attackSpeedMultiplier = 0
+
+        // Create ice block sprite
+        let block = SKSpriteNode(imageNamed: "iceblockspell")
+        block.zPosition = 300
+        block.alpha = 0.95
+        block.blendMode = .alpha
+
+        let w = wizardNode.frame.width
+        let h = wizardNode.frame.height
+        let diameter = max(w, h) * 11.2
+        let base = max(block.size.width, block.size.height)
+        block.setScale(diameter / base)
+
+        wizardNode.addChild(block)
+        block.position = .zero
+        iceBlockNode = block
+
+        // Glow aura
+        let glow = SKShapeNode(circleOfRadius: diameter * 10.6)
+        glow.fillColor = UIColor.cyan.withAlphaComponent(0.20)
+        glow.strokeColor = UIColor.white.withAlphaComponent(0.5)
+        glow.glowWidth = 10
+        glow.zPosition = 301
+        glow.name = "iceblockGlow"
+        wizardNode.addChild(glow)
+
+        glow.run(.repeatForever(.sequence([
+            .fadeAlpha(to: 0.5, duration: 0.5),
+            .fadeAlpha(to: 0.2, duration: 0.5)
+        ])))
+
+        // Duration
+        run(.sequence([
+            .wait(forDuration: 10.0),
+            .run { [weak self] in self?.deactivateIceBlock() }
+        ]))
+    }
+
+    public func tryActivateBlizzard() {
+        guard trySpendMana(50) == true else {
+            run(.playSoundFileNamed("notenoughmana.wav", waitForCompletion: false))
+            return
+        }
+
+        activateBlizzard()
+    }
+
+    
+    public func activateBlizzard() {
+        guard !isBlizzardActive else { return }
+
+        isBlizzardActive = true
+        blizzardSlowMultiplier = 0.75   // 25% slow
+        addChild(blizzardNodeContainer)
+        
+        guard trySpendMana(50) else { return }
+        guard isSpellReady("blizzard") else { return }
+
+        // Swap wizard to cast pose
+        let oldTexture = wizardNode.texture
+        wizardNode.texture = SKTexture(imageNamed: "wizardspell")
+        wizardNode.texture?.filteringMode = .nearest
+
+        // Blizzard lasts 10 seconds
+        run(.sequence([
+            .wait(forDuration: 10.0),
+            .run { [weak self] in
+                self?.stopBlizzard()
+                self?.wizardNode.texture = oldTexture
+            }
+        ]))
+
+        // Begin spawning falling ice bolts
+        spawnBlizzardBolts()
+    }
+    
+    private func dropOneBlizzardBolt() {
+        guard isBlizzardActive else { return }
+
+        let xPos = CGFloat.random(in: size.width * 0.1 ... size.width * 0.9)
+        let startY = size.height + 40
+
+        let bolt = SKSpriteNode(imageNamed: "blizzardbolt")   // your uploaded asset name
+        bolt.zPosition = 90
+        bolt.alpha = 0.92
+        bolt.blendMode = .add
+        bolt.setScale(0.05)
+
+        bolt.position = CGPoint(x: xPos, y: startY)
+        blizzardNodeContainer.addChild(bolt)
+
+        // Glow pulse
+        let glowUp = SKAction.fadeAlpha(to: 1.0, duration: 0.1)
+        let glowDown = SKAction.fadeAlpha(to: 0.85, duration: 0.1)
+        bolt.run(.repeatForever(.sequence([glowUp, glowDown])))
+
+        // Fall action
+        let fall = SKAction.moveBy(x: 0, y: -size.height - 80, duration: 1.15)
+        bolt.run(.sequence([fall, .removeFromParent()]))
+    }
+    
+        private func spawnBlizzardBolts() {
+            // Spawn 6 bolts per second (one every 0.16 sec)
+            let spawn = SKAction.run { [weak self] in
+                self?.dropOneBlizzardBolt()
+            }
+
+            let wait = SKAction.wait(forDuration: 0.16)
+
+            let sequence = SKAction.sequence([spawn, wait])
+
+            blizzardNodeContainer.run(.repeatForever(sequence), withKey: "BlizzardSpawner")
+        }
+    
+    private func stopBlizzard() {
+        isBlizzardActive = false
+        blizzardSlowMultiplier = 1.0
+
+        // Stop the bolt spawner
+        removeAction(forKey: "BlizzardBoltSpawner")
+
+        // Remove visuals
+        blizzardNodeContainer.removeAllActions()
+        blizzardNodeContainer.removeAllChildren()
+        blizzardNodeContainer.removeFromParent()
+    }
+
+
+
+    
+    // Mana shield bubble
+    public func tryActivateManaShield() {
+        guard trySpendMana(30) == true else {
+            run(.playSoundFileNamed("notenoughmana.wav", waitForCompletion: false))
+            return
+        }
+
+        guard manaShieldNode == nil else { return }
+
+        setManaShield(active: true)
+
+        // Auto-disable in 10 sec
+        run(.sequence([
+            .wait(forDuration: 10.0),
+            .run { [weak self] in self?.setManaShield(active: false) }
+        ]))
+    }
+
+    func setManaShield(active: Bool) {
+        if active {
+            guard manaShieldNode == nil else { return }
+
+            let bubble = SKSpriteNode(imageNamed: "manashieldeffect")
+            bubble.zPosition = 55
+            bubble.alpha = 0.85   // transparent look
+
+            // Attach to wizard first so frame values are valid
+            wizardNode.addChild(bubble)
+            bubble.position = .zero
+
+            // --- SCALE LOGIC ---
+
+            // Try to base size on wizard
+            var wizardWidth  = wizardNode.frame.width
+            var wizardHeight = wizardNode.frame.height
+
+            // Fallback in case wizard frame is zero or tiny
+            if wizardWidth < 10 || wizardHeight < 10 {
+                // use your fingerRadius as a reasonable base
+                wizardWidth  = fingerRadius * 2.0
+                wizardHeight = fingerRadius * 2.0
+            }
+
+            let wizardDiameter = max(wizardWidth, wizardHeight)
+
+            // Make bubble MUCH larger than wizard (try 2.8x)
+            let bubbleDiameter = wizardDiameter * 10.8
+
+            let baseBubbleSize = max(bubble.size.width, bubble.size.height)
+            let scale = bubbleDiameter / max(baseBubbleSize, 1)  // avoid divide by 0
+
+            bubble.setScale(scale)
+
+            // Store it
+            manaShieldNode = bubble
+
+            // Pulse animation
+            let pulseUp = SKAction.scale(to: scale * 1.08, duration: 0.6)
+            let pulseDown = SKAction.scale(to: scale * 0.95, duration: 0.6)
+            let pulse = SKAction.repeatForever(.sequence([pulseUp, pulseDown]))
+            bubble.run(pulse)
+
+        } else {
+            manaShieldNode?.run(
+                .sequence([
+                    .fadeOut(withDuration: 0.2),
+                    .removeFromParent()
+                ])
+            )
+            manaShieldNode = nil
+        }
+    }
+    
+    public func tryActivateRapidWand() {
+        guard trySpendMana(25) == true else {
+            run(.playSoundFileNamed("notenoughmana.wav", waitForCompletion: false))
+            return
+        }
+
+        activateRapidWand()
+    }
+
+    public func activateRapidWand() {
+        // Prevent stacking
+        removeAction(forKey: "RapidWandTimer")
+
+        isRapidWandActive = true
+        attackSpeedMultiplier = 1.5   // +50% attack speed
+        guard trySpendMana(25) else { return }
+        guard isSpellReady("rapidwand") else { return }
+
+        let wait = SKAction.wait(forDuration: 20.0)
+        let block = SKAction.run { [weak self] in
+            self?.attackSpeedMultiplier = 1.0
+            self?.isRapidWandActive = false
+        }
+
+        run(.sequence([wait, block]), withKey: "RapidWandTimer")
+    }
+
+    public func tryActivateLightningShield() {
+        guard trySpendMana(40) == true else {
+            run(.playSoundFileNamed("notenoughmana.wav", waitForCompletion: false))
+            return
+        }
+
+        guard !isStormAuraActive else { return }
+
+        setStormAura(active: true)
+        playLightningSpellSound()
+        
+        guard trySpendMana(40) else { return }
+        guard isSpellReady("lightningshield") else { return }
+
+
+        run(.sequence([
+            .wait(forDuration: 10.0),
+            .run { [weak self] in self?.setStormAura(active: false) }
+        ]))
+    }
+
+
+    func setStormAura(active: Bool) {
+        if active {
+            guard stormAuraNode == nil else { return }
+
+            // Big lightning aura sprite (use your own art name here)
+            let aura = SKSpriteNode(imageNamed: "lightningshieldeffect")
+            aura.zPosition = 60
+            aura.alpha = 0.9
+            aura.blendMode = .add
+
+            // Scale much larger than wizard
+            let w = wizardNode.frame.width
+            let h = wizardNode.frame.height
+            let wizardDiameter = max(w, h)
+
+            let auraDiameter = wizardDiameter * 13.0   // 🔥 much bigger than mana shield
+            let baseSize = max(aura.size.width, aura.size.height)
+            let scale = auraDiameter / max(baseSize, 1)
+            aura.setScale(scale)
+
+            wizardNode.addChild(aura)
+            aura.position = .zero
+
+            // Spin + pulse a bit
+            let rotate = SKAction.rotate(byAngle: .pi * 2, duration: 2.0)
+            let rotForever = SKAction.repeatForever(rotate)
+
+            let pulseUp = SKAction.scale(to: scale * 1.05, duration: 0.5)
+            let pulseDown = SKAction.scale(to: scale * 0.97, duration: 0.5)
+            let pulse = SKAction.repeatForever(.sequence([pulseUp, pulseDown]))
+
+            aura.run(rotForever)
+            aura.run(pulse)
+
+            stormAuraNode = aura
+            isStormAuraActive = true
+            stormAuraDamageAccumulator = 0
+
+        } else {
+            isStormAuraActive = false
+            stormAuraDamageAccumulator = 0
+
+            stormAuraNode?.run(
+                .sequence([
+                    .fadeOut(withDuration: 0.25),
+                    .removeFromParent()
+                ])
+            )
+            stormAuraNode = nil
+        }
+    }
+
     // XP Gainz
     private func awardXP(_ amount: Int) {
         xpSubject.send(amount)
@@ -664,6 +1427,61 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let a = contact.bodyA
         let b = contact.bodyB
         let mask = a.categoryBitMask | b.categoryBitMask
+        
+        //ICE BLOCK NO DAMAGE
+        
+        if isIceBlockActive {
+            return  // completely ignore all damage while frozen
+        }
+
+        
+        // ================================================
+        // FIREBALL HIT (strong projectile, 50 damage)
+        // ================================================
+        if mask == (Cat.missile | Cat.ent)
+            || mask == (Cat.missile | Cat.elf)
+            || mask == (Cat.missile | Cat.druid) {
+
+            let enemyBody: SKPhysicsBody
+            let fireballBody: SKPhysicsBody
+
+            if a.categoryBitMask == Cat.missile {
+                fireballBody = a
+                enemyBody = b
+            } else {
+                fireballBody = b
+                enemyBody = a
+            }
+
+            // Make sure it’s REALLY the fireball (not autoshoot)
+            if let fb = fireballBody.node as? SKSpriteNode,
+               fb.texture?.description.contains("fireball") == true {
+
+                // ENT
+                if let ent = enemyBody.node as? EntNode {
+                    let died = ent.takeDamage(50)
+                    if died { awardXP(25); entKillSubject.send(1) }
+                }
+
+                // ELF
+                if let elf = enemyBody.node as? WoodlandElfNode {
+                    let died = elf.takeDamage(50)
+                    if died { awardXP(20); elfKillSubject.send(1) }
+                }
+
+                // DRUID
+                if let druid = enemyBody.node as? WoodlandDruidNode {
+                    let died = druid.takeDamage(50)
+                    if died { awardXP(40); druidKillSubject.send(1) }
+                }
+
+                // Hit effect
+                showHitPop(at: fireballBody.node!.position)
+
+                return
+            }
+        }
+
 
         // Player hit by veggie (if you ever bring them back)
         if mask == (Cat.finger | Cat.veggie) {
@@ -831,10 +1649,6 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         gameOverSubject.send(())
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-    }
-
-    public func triggerGameOver() {
-        handleGameOver()
     }
 
     // --------------------------------------------------------

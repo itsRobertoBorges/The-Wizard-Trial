@@ -27,6 +27,8 @@ final class WoodlandDruidNode: SKSpriteNode {
     private var hoverRadius: CGFloat = 26
     private var hoverAngle: CGFloat = 0
     private let hoverSpeed: CGFloat = 1.6      // radians per second
+    var speedMultiplier: CGFloat = 1.0
+
 
     // shooting
     private var timeSinceLastShot: TimeInterval = 0
@@ -107,6 +109,58 @@ final class WoodlandDruidNode: SKSpriteNode {
         body.contactTestBitMask = Cat.missile  // missiles can hit him
         physicsBody = body
     }
+    
+    // Health
+    
+    class EnemyNode: SKSpriteNode {
+
+        var maxHP: Int = 100
+        var currentHP: Int = 100
+
+        private var hpBarBackground: SKSpriteNode!
+        private var hpBarFill: SKSpriteNode!
+
+        func setupHealthBar() {
+            let barWidth: CGFloat = size.width * 0.8
+            let barHeight: CGFloat = 4
+
+            // Background outline (white)
+            hpBarBackground = SKSpriteNode(color: .white, size: CGSize(width: barWidth, height: barHeight))
+            hpBarBackground.position = CGPoint(x: 0, y: size.height / 2 + 10)
+            hpBarBackground.zPosition = 500
+            addChild(hpBarBackground)
+
+            // Fill (green)
+            hpBarFill = SKSpriteNode(color: .green, size: CGSize(width: barWidth - 2, height: barHeight - 2))
+            hpBarFill.position = CGPoint.zero
+            hpBarFill.zPosition = 501
+            hpBarBackground.addChild(hpBarFill)
+        }
+
+        func updateHealthBar() {
+            let ratio = CGFloat(currentHP) / CGFloat(maxHP)
+            let fullWidth = hpBarBackground.size.width - 2
+
+            hpBarFill.size.width = fullWidth * ratio
+
+            // Green → Red transition like RuneScape
+            if ratio > 0.66 {
+                hpBarFill.color = .green
+            } else if ratio > 0.33 {
+                hpBarFill.color = .yellow
+            } else {
+                hpBarFill.color = .red
+            }
+        }
+
+        // Call this whenever taking damage
+        func takeDamage(_ dmg: Int) -> Bool {
+            currentHP = max(currentHP - dmg, 0)
+            updateHealthBar()
+            return currentHP == 0
+        }
+    }
+
 
     // MARK: - Hover animation
 

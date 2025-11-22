@@ -32,6 +32,18 @@
 		6260F2F52ECBCE6700E70B6C /* levelUp.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F2F42ECBCE6700E70B6C /* levelUp.wav */; };
 		6260F2F92ECBDC6B00E70B6C /* PlayerInventory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6260F2F82ECBDC6B00E70B6C /* PlayerInventory.swift */; };
 		6260F2FB2ECBDC9E00E70B6C /* ShopItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6260F2FA2ECBDC9E00E70B6C /* ShopItem.swift */; };
+		6260F2FD2ECE83D400E70B6C /* healingpotion.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F2FC2ECE83D400E70B6C /* healingpotion.wav */; };
+		6260F2FF2ECE8B1B00E70B6C /* powerUp.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F2FE2ECE8B1B00E70B6C /* powerUp.wav */; };
+		6260F3012ECE8D8700E70B6C /* manashield.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F3002ECE8D8700E70B6C /* manashield.wav */; };
+		6260F3032ECEB2EA00E70B6C /* fairydust.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F3022ECEB2EA00E70B6C /* fairydust.wav */; };
+		6260F3072ECEC94F00E70B6C /* lightningshieldeffect 2.png in Resources */ = {isa = PBXBuildFile; fileRef = 6260F3062ECEC94F00E70B6C /* lightningshieldeffect 2.png */; };
+		6260F3092ECECA3A00E70B6C /* lightningspell.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F3082ECECA3A00E70B6C /* lightningspell.wav */; };
+		6260F30B2ECFE0D400E70B6C /* rapidshoot.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F30A2ECFE0D400E70B6C /* rapidshoot.wav */; };
+		6260F30D2ECFE0E200E70B6C /* rapidwand.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F30C2ECFE0E200E70B6C /* rapidwand.wav */; };
+		6260F30F2ED0003A00E70B6C /* blizzard.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F30E2ED0003A00E70B6C /* blizzard.wav */; };
+		6260F3112ED00D6600E70B6C /* fireball.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F3102ED00D6600E70B6C /* fireball.wav */; };
+		6260F3132ED12B6B00E70B6C /* iceblocksound.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F3122ED12B6B00E70B6C /* iceblocksound.wav */; };
+		6260F31B2ED2281C00E70B6C /* revivesoundeffect.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F31A2ED2281C00E70B6C /* revivesoundeffect.wav */; };
 		626BBBFD2EC29D1100AF73C2 /* shopmusic.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 626BBBFC2EC29D1000AF73C2 /* shopmusic.mp3 */; };
 		626BBC032EC2A13F00AF73C2 /* shopimage.png in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC022EC2A13F00AF73C2 /* shopimage.png */; };
 		626BBC052EC2A25F00AF73C2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC042EC2A25F00AF73C2 /* Assets.xcassets */; };
@@ -90,6 +102,18 @@
 		6260F2F42ECBCE6700E70B6C /* levelUp.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = levelUp.wav; sourceTree = "<group>"; };
 		6260F2F82ECBDC6B00E70B6C /* PlayerInventory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerInventory.swift; sourceTree = "<group>"; };
 		6260F2FA2ECBDC9E00E70B6C /* ShopItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShopItem.swift; sourceTree = "<group>"; };
+		6260F2FC2ECE83D400E70B6C /* healingpotion.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = healingpotion.wav; sourceTree = "<group>"; };
+		6260F2FE2ECE8B1B00E70B6C /* powerUp.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = powerUp.wav; sourceTree = "<group>"; };
+		6260F3002ECE8D8700E70B6C /* manashield.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = manashield.wav; sourceTree = "<group>"; };
+		6260F3022ECEB2EA00E70B6C /* fairydust.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = fairydust.wav; sourceTree = "<group>"; };
+		6260F3062ECEC94F00E70B6C /* lightningshieldeffect 2.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "lightningshieldeffect 2.png"; sourceTree = "<group>"; };
+		6260F3082ECECA3A00E70B6C /* lightningspell.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = lightningspell.wav; sourceTree = "<group>"; };
+		6260F30A2ECFE0D400E70B6C /* rapidshoot.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = rapidshoot.wav; sourceTree = "<group>"; };
+		6260F30C2ECFE0E200E70B6C /* rapidwand.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = rapidwand.wav; sourceTree = "<group>"; };
+		6260F30E2ED0003A00E70B6C /* blizzard.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = blizzard.wav; sourceTree = "<group>"; };
+		6260F3102ED00D6600E70B6C /* fireball.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = fireball.wav; sourceTree = "<group>"; };
+		6260F3122ED12B6B00E70B6C /* iceblocksound.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = iceblocksound.wav; sourceTree = "<group>"; };
+		6260F31A2ED2281C00E70B6C /* revivesoundeffect.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = revivesoundeffect.wav; sourceTree = "<group>"; };
 		626BBBFC2EC29D1000AF73C2 /* shopmusic.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = shopmusic.mp3; sourceTree = "<group>"; };
 		626BBC022EC2A13F00AF73C2 /* shopimage.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = shopimage.png; sourceTree = "<group>"; };
 		626BBC042EC2A25F00AF73C2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -161,12 +185,22 @@
 				626BBC352EC2ED4200AF73C2 /* loadingsound.mp3 */,
 				6260F2E82EC937DB00E70B6C /* EntNode.swift */,
 				6247245A2EC17E0F007D13C0 /* LoadingScreenView.swift */,
+				6260F2FC2ECE83D400E70B6C /* healingpotion.wav */,
+				6260F30A2ECFE0D400E70B6C /* rapidshoot.wav */,
+				6260F30C2ECFE0E200E70B6C /* rapidwand.wav */,
 				624724422EC16E48007D13C0 /* MainMenuView.swift */,
+				6260F3122ED12B6B00E70B6C /* iceblocksound.wav */,
 				626BBC192EC2CB0C00AF73C2 /* manacrystal.png */,
+				6260F3102ED00D6600E70B6C /* fireball.wav */,
 				6247243F2EC16E48007D13C0 /* ContentView.swift */,
+				6260F3082ECECA3A00E70B6C /* lightningspell.wav */,
 				6260F2F42ECBCE6700E70B6C /* levelUp.wav */,
 				6260F2F02ECA400600E70B6C /* WoodlandDruidNode.swift */,
+				6260F3022ECEB2EA00E70B6C /* fairydust.wav */,
 				624724402EC16E48007D13C0 /* GameScene.swift */,
+				6260F31A2ED2281C00E70B6C /* revivesoundeffect.wav */,
+				6260F30E2ED0003A00E70B6C /* blizzard.wav */,
+				6260F3002ECE8D8700E70B6C /* manashield.wav */,
 				624724442EC16E48007D13C0 /* RootView.swift */,
 				6260F2EC2EC9720C00E70B6C /* WoodlandElfNode.swift */,
 				627423BD2EC6B0B900D5630B /* WitheringForestScene.swift */,
@@ -174,10 +208,12 @@
 				6260F2EA2EC963C700E70B6C /* explosion.wav */,
 				626BBC062EC2AC2A00AF73C2 /* TypewriterText.swift */,
 				626BBC042EC2A25F00AF73C2 /* Assets.xcassets */,
+				6260F3062ECEC94F00E70B6C /* lightningshieldeffect 2.png */,
 				627423C12EC84D4A00D5630B /* Battle.mp3 */,
 				626BBC022EC2A13F00AF73C2 /* shopimage.png */,
 				6247245E2EC1B030007D13C0 /* applogo.png */,
 				6247243D2EC16E48007D13C0 /* bgm.mp3 */,
+				6260F2FE2ECE8B1B00E70B6C /* powerUp.wav */,
 				6247243E2EC16E48007D13C0 /* click.mp3 */,
 				624724412EC16E48007D13C0 /* mainmenu.mp3 */,
 				626BBBFC2EC29D1000AF73C2 /* shopmusic.mp3 */,
@@ -269,19 +305,30 @@
 				626BBC162EC2C44800AF73C2 /* textscroll.wav in Resources */,
 				624724492EC16E48007D13C0 /* click.mp3 in Resources */,
 				626BBBFD2EC29D1100AF73C2 /* shopmusic.mp3 in Resources */,
+				6260F3032ECEB2EA00E70B6C /* fairydust.wav in Resources */,
 				626BBC1A2EC2CB0C00AF73C2 /* manacrystal.png in Resources */,
+				6260F3072ECEC94F00E70B6C /* lightningshieldeffect 2.png in Resources */,
 				626BBC2C2EC2D8B600AF73C2 /* healthpotion.png in Resources */,
 				626BBC032EC2A13F00AF73C2 /* shopimage.png in Resources */,
+				6260F3132ED12B6B00E70B6C /* iceblocksound.wav in Resources */,
+				6260F30F2ED0003A00E70B6C /* blizzard.wav in Resources */,
+				6260F2FD2ECE83D400E70B6C /* healingpotion.wav in Resources */,
+				6260F31B2ED2281C00E70B6C /* revivesoundeffect.wav in Resources */,
+				6260F3112ED00D6600E70B6C /* fireball.wav in Resources */,
+				6260F3092ECECA3A00E70B6C /* lightningspell.wav in Resources */,
 				626BBC1C2EC2CC0700AF73C2 /* manashield.png in Resources */,
 				626BBC2A2EC2D74600AF73C2 /* rapidwand.png in Resources */,
 				626BBC202EC2CEB100AF73C2 /* lightningshield.png in Resources */,
 				626BBC2E2EC2DED500AF73C2 /* backbutton.png in Resources */,
 				626BBC282EC2D54400AF73C2 /* revive.png in Resources */,
+				6260F3012ECE8D8700E70B6C /* manashield.wav in Resources */,
 				626BBC052EC2A25F00AF73C2 /* Assets.xcassets in Resources */,
 				626BBC242EC2D1C400AF73C2 /* fireballspell.png in Resources */,
 				627423C22EC84D4A00D5630B /* Battle.mp3 in Resources */,
 				626BBC262EC2D30400AF73C2 /* iceblock.png in Resources */,
+				6260F2FF2ECE8B1B00E70B6C /* powerUp.wav in Resources */,
 				624724612EC1B340007D13C0 /* background.png in Resources */,
+				6260F30D2ECFE0E200E70B6C /* rapidwand.wav in Resources */,
 				624724592EC17C16007D13C0 /* loadscreentext.png in Resources */,
 				626BBC342EC2EA0B00AF73C2 /* loadingshop.png in Resources */,
 				624724572EC17897007D13C0 /* loadingscreen.png in Resources */,
@@ -290,6 +337,7 @@
 				6247245D2EC1A13A007D13C0 /* firewizard.png in Resources */,
 				627423C02EC8378C00D5630B /* autoattacksound.mp3 in Resources */,
 				626BBC1E2EC2CD9000AF73C2 /* fairydust.png in Resources */,
+				6260F30B2ECFE0D400E70B6C /* rapidshoot.wav in Resources */,
 				6247244D2EC16E48007D13C0 /* menuimage.png in Resources */,
 				6247244E2EC16E48007D13C0 /* mainmenu.mp3 in Resources */,
 				626BBC362EC2ED4200AF73C2 /* loadingsound.mp3 in Resources */,

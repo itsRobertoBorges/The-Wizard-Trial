@@ -10,11 +10,28 @@ struct ContentView: View {
 
     // GameScene
     private let scene: GameScene
+    
+    // Game Pause State
+    @State private var wasPausedBeforeBackground = false
+    
+    @State private var spellCooldowns: [String: CGFloat] = [
+        "manashield": 0,
+        "lightningshield": 0,
+        "rapidwand": 0,
+        "blizzard": 0,
+        "fireball": 0
+    ]
+
 
     // MARK: - Game State
     @State private var currentWave: Int = 1
     @State private var health: CGFloat = 100
     @State private var mana:   CGFloat = 100
+    
+    //Cooldowns
+    @AppStorage("WT_cooldowns") private var cooldownsData: Data = Data()
+    @State private var cooldowns: [String: Double] = [:]
+
 
     // Permanent leveling
     @AppStorage("WT_playerLevel") private var level: Int = 1
@@ -46,6 +63,23 @@ struct ContentView: View {
 
     // Mana timer
     private let manaTimer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
+    
+    // Spells
+    @State private var isManaShieldActive: Bool = false
+    @State private var manaShieldTimeRemaining: CGFloat = 0
+
+    // Heal-over-time from potion
+    @State private var healTicksRemaining: Int = 0
+    @State private var healPerTick: CGFloat = 0
+    
+    // Storm aura
+    @State private var isStormAuraActive: Bool = false
+    @State private var stormAuraTimeRemaining: CGFloat = 0
+    
+    // Spell cooldown tick
+    private let cooldownTick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+
 
     // MARK: - Init
 
@@ -91,7 +125,11 @@ struct ContentView: View {
                         inventory: inventory,
                         isMuted: isMuted,
                         onClose: { closePauseOverlay() },
-                        onMainMenu: { bankCoinsIfNeededAndExitToMenu() },
+                        onMainMenu: {
+                            bankCoinsIfNeededAndExitToMenu()
+                            scene.stopSceneCompletely()
+                            onExitToMenu()
+                        },
                         onToggleMute: {
                             isMuted.toggle()
                             scene.setMuted(isMuted)
@@ -133,7 +171,7 @@ struct ContentView: View {
                             choosingEquipSlot = true
                         },
                         onDestroy: {
-                            inventory.destroy(item)
+                            inventory.destroyOneInInventory(item)
                             showingItemMenu = false
                             selectedItem = nil
                         },
@@ -161,17 +199,61 @@ struct ContentView: View {
                             resetRunState()
                             scene.fullReset()
                             scene.begin()
-                        }
+                        },
+                        onRevive: {
+                            revivePlayer()
+                        },
+                        canRevive: hasReviveItem
                     )
                 }
+                
+                
             }
         }
         // ===== GameScene event wiring =====
+        .onReceive(scene.manaSpendPublisher) { amount in
+            if mana >= amount {
+                mana -= amount
+            }
+        }
+    
+        .onReceive(cooldownTick) { _ in
+            reduceCooldowns()
+        }
+
+        
         .onReceive(scene.damagePublisher) { dmg in
             guard !showDeathPopup else { return }
 
+            // ⚡ LIGHTNING SHIELD FULL IMMUNITY
+            if isStormAuraActive {
+                return    // ignore ALL damage
+            }
+
+            // 🛡️ MANA SHIELD: absorbs hit using mana
+            if isManaShieldActive {
+                if mana >= 15 {
+                    mana = max(mana - 15, 0)
+                    scene.playManaShieldHitSound()
+
+                    // If mana is too low for another block, disable mana shield
+                    if mana < 15 {
+                        isManaShieldActive = false
+                        scene.setManaShield(active: false)
+                    }
+
+                    return   // No HP damage
+                } else {
+                    // Not enough mana → drop the shield
+                    isManaShieldActive = false
+                    scene.setManaShield(active: false)
+                }
+            }
+
+            // ❤️ Normal HP damage
             let newHP = max(health - CGFloat(dmg), 0)
             health = newHP
+
             if newHP <= 0 {
                 bankCoinsIfNeeded()
                 scene.triggerGameOver()
@@ -180,6 +262,7 @@ struct ContentView: View {
                 }
             }
         }
+
         .onReceive(scene.coinsPublisher) { coins in
             if !showDeathPopup {
                 coinsThisRun = coins
@@ -191,6 +274,7 @@ struct ContentView: View {
         .onReceive(manaTimer) { _ in
             if showDeathPopup || showPauseOverlay { return }
 
+            // === Mana drain / regen from shooting ===
             if isShooting {
                 if mana > 0 {
                     mana = max(mana - 0.5, 0)
@@ -198,7 +282,38 @@ struct ContentView: View {
             } else {
                 mana = min(mana + 0.5, maxMana(for: level))
             }
+
+            // === Health potion heal-over-time ===
+            if healTicksRemaining > 0 {
+                let maxHp = maxHP(for: level)
+                health = min(health + healPerTick, maxHp)
+                healTicksRemaining -= 1
+            }
+
+            // === Mana shield duration ===
+            if isManaShieldActive {
+                manaShieldTimeRemaining -= 0.1  // timer is every 0.1s
+
+                // Time up or mana too low → drop shield & bubble
+                if manaShieldTimeRemaining <= 0 || mana < 15 {
+                    isManaShieldActive = false
+                    scene.setManaShield(active: false)
+                }
+            
+            }
+            
+            // === Storm aura duration ===
+            if isStormAuraActive {
+                stormAuraTimeRemaining -= 0.1
+
+                if stormAuraTimeRemaining <= 0 {
+                    isStormAuraActive = false
+                    scene.setStormAura(active: false)
+                }
+            }
+
         }
+
         .onReceive(scene.xpPublisher) { gained in
             xpThisRun += gained
             gainXP(gained)
@@ -220,14 +335,55 @@ struct ContentView: View {
         }
         .onAppear {
             resetRunState()
+            inventory.addCoins(1000)
+            
+            scene.setPlayerLevel(level)
         }
+        
+        .onChange(of: level) { newLevel in
+            scene.setPlayerLevel(newLevel)
+        }
+
+        
+        // ===== App background / foreground pause handling =====
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            // App going into background
+            if showPauseOverlay {
+                wasPausedBeforeBackground = true
+            } else {
+                wasPausedBeforeBackground = false
+            }
+
+            // Always pause SpriteKit when backgrounded
+            scene.isPaused = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            // App returning to foreground
+            if wasPausedBeforeBackground {
+                // Stay paused if we were paused before leaving
+                scene.isPaused = true
+            } else {
+                // Only resume if user was NOT paused
+                if !showPauseOverlay && !showDeathPopup {
+                    scene.isPaused = false
+                }
+            }
+        }
+
     }
+    
+    
+    
 
     // MARK: - Top / Left HUD Pieces
 
     private var topLeftPauseButton: some View {
         VStack {
+            Spacer()   // push content down slightly
+
             HStack {
+                Spacer().frame(width: 0)
+
                 Button {
                     guard !showDeathPopup else { return }
                     showPauseOverlay = true
@@ -236,15 +392,16 @@ struct ContentView: View {
                     Text("PAUSE")
                         .font(.custom("PressStart2P-Regular", size: 12))
                         .foregroundColor(.white)
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, 14)
                         .padding(.vertical, 8)
                         .background(.ultraThinMaterial, in: Capsule())
                 }
                 .padding(.leading, 16)
-                .padding(.top, 20)
+                .padding(.top, 340)   // 💡 moves it below health+mana bars
 
                 Spacer()
             }
+
             Spacer()
         }
     }
@@ -302,9 +459,10 @@ struct ContentView: View {
                 )
                 .padding(.leading, 40)
                 .padding(.bottom, 24)
-
+                
                 Spacer()
-
+                
+                // Right analog + quick slots
                 // Right analog + quick slots
                 ZStack {
                     AnalogStickView(
@@ -324,26 +482,33 @@ struct ContentView: View {
                             scene.setAttackInput(.zero)
                         }
                     )
-
-                    QuickSlotButton(item: inventory.quickSlots[0]) {
-                        handleQuickSlotUse(index: 0)
-                    }
-                    .offset(x: 0, y: -geo.size.width * 0.18)
-
-                    QuickSlotButton(item: inventory.quickSlots[1]) {
-                        handleQuickSlotUse(index: 1)
-                    }
-                    .offset(x: -geo.size.width * 0.14,
-                            y: geo.size.width * 0.04)
-
-                    QuickSlotButton(item: inventory.quickSlots[2]) {
-                        handleQuickSlotUse(index: 2)
-                    }
-                    .offset(x: geo.size.width * 0.14,
-                            y: geo.size.width * 0.04)
+                    
+                    // SLOT 1 — ABOVE
+                    QuickSlotButton(
+                        item: inventory.quickSlots[0],
+                        action: { handleQuickSlotUse(index: 0) },
+                        cooldownRemaining: cooldownRemaining(for: inventory.quickSlots[0])
+                    )
+                    .offset(x: 0, y: -geo.size.width * 0.20)
+                    
+                    // SLOT 2 — RIGHT
+                    QuickSlotButton(
+                        item: inventory.quickSlots[1],
+                        action: { handleQuickSlotUse(index: 1) },
+                        cooldownRemaining: cooldownRemaining(for: inventory.quickSlots[1])
+                    )
+                    .offset(x: geo.size.width * 0.20, y: -geo.size.width * 0.02)
+                    
+                    // SLOT 3 — BELOW
+                    QuickSlotButton(
+                        item: inventory.quickSlots[2],
+                        action: { handleQuickSlotUse(index: 2) },
+                        cooldownRemaining: cooldownRemaining(for: inventory.quickSlots[2])
+                    )
+                    .offset(x: 0, y: geo.size.width * 0.20)
                 }
-                .padding(.trailing, 24)
-                .padding(.bottom, 24)
+                .padding(.trailing, 70)     // << 🔥 KEY FIX: pushes everything LEFT
+                .padding(.bottom, 50)
             }
         }
     }
@@ -355,22 +520,204 @@ struct ContentView: View {
         case "healthpotion":
             useHealthPotion()
             inventory.consume(item)
+        
+        case "manacrystal":
+            useManaCrystal()
+            inventory.consume(item)
+
+        case "manashield":
+            guard trySpendMana(30) else { return }
+            guard isSpellReady("manashield") else { return }
+            startCooldown("manashield", 30)
+            activateManaShield()
+            
+        case "fairydust":
+            useFairyDust()
+            inventory.consume(item)
+        
+        case "lightningshield":
+            guard trySpendMana(40) else { return }
+            guard isSpellReady("lightningshield") else { return }
+            startCooldown("lightningshield", 45)
+            scene.tryActivateLightningShield()
+        
+        case "rapidwand":
+            guard trySpendMana(25) else { return }
+            guard isSpellReady("rapidwand") else { return }
+            startCooldown("rapidwand", 60)
+            scene.activateRapidWand()
+
+        
+        case "blizzardspell":
+            guard trySpendMana(50) else { return }
+            guard isSpellReady("blizzard") else { return }
+            startCooldown("blizzard", 200)
+            scene.activateBlizzard()
+            scene.run(.playSoundFileNamed("blizzard.wav", waitForCompletion: false))
+
+            
+        case "fireballspell":
+            guard trySpendMana(15) else { return }
+            guard isSpellReady("fireball") else { return }
+            startCooldown("fireball", 5)
+            scene.castFireball()
+
+        
+        case "iceblock":
+            guard trySpendMana(35) else { return }
+            guard isSpellReady("iceblock") else { return }
+            startCooldown("iceblock", 60)
+            scene.activateIceBlock()
+
         default:
-            // Later: other items
             break
         }
     }
 
+
+    private func activateManaShield() {
+        // Need enough mana to be meaningful
+        guard mana >= 15 else { return }
+
+        isManaShieldActive = true
+        manaShieldTimeRemaining = 10.0       // ⏱ lasts up to 10 seconds
+
+        guard trySpendMana(30) else { return }
+        guard isSpellReady("manashield") else { return }
+        startCooldown("manashield", 25)
+
+        scene.setManaShield(active: true)    // show bubble
+        scene.playHealSound()             // shield activation sound
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+    
+    private func useFairyDust() {
+        let maxHp = maxHP(for: level)
+
+        // If you're already full HP, you can early return if you want
+        guard health < maxHp else { return }
+
+        // Instantly full heal
+        health = maxHp
+
+        // 🔊 play fairy dust sound
+        scene.playFairyDustSound()
+
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+
+    // Revive
+    
+    private var hasReviveItem: Bool {
+        inventory.slots.contains(where: { $0?.imageName == "revive"})
+    }
+    
+    private func revivePlayer() {
+        guard hasReviveItem else { return }
+
+        // Remove 1 revive item
+        if let index = inventory.slots.firstIndex(where: { $0?.imageName == "revive" }) {
+            inventory.slots[index] = nil
+        }
+
+        // Hide death popup
+        withAnimation {
+            showDeathPopup = false
+        }
+
+        // Restore HP & Mana (40%)
+        let maxHp = maxHP(for: level)
+        let maxMn = maxMana(for: level)
+
+        health = maxHp * 0.4
+        mana   = maxMn * 0.4
+
+        // 🔥 Fully cancel the game over freeze
+        scene.cancelGameOverState()   // <-- this fixes your pause bug
+        scene.isPaused = false        // safety unpause
+
+        // Revive sound
+        scene.playReviveSound()
+
+        // Player revive animation
+        scene.runReviveEffect()
+    }
+
+    private func cooldownRemaining(for item: ShopItem?) -> Double {
+        guard let item = item else { return 0 }
+        return cooldowns[item.cooldownKey] ?? 0
+    }
+
+
     private func handleQuickSlotUse(index: Int) {
         guard let item = inventory.quickSlots[index] else { return }
+
+        // ⛔ BLOCK usage if on cooldown
+        if cooldownRemaining(for: item) > 0 {
+            print("✨ \(item.imageName) is on cooldown: \(cooldownRemaining(for: item))s left")
+            return
+        }
+
         handleUse(item: item)
+    }
+
+    
+    // MARK: - Spell Mana + Cooldowns
+
+    private func trySpendMana(_ amount: CGFloat) -> Bool {
+        if mana < amount { return false }
+        mana -= amount
+        return true
+    }
+
+    private func isSpellReady(_ key: String) -> Bool {
+        spellCooldowns[key, default: 0] <= 0
+    }
+
+    private func startCooldown(_ key: String, _ duration: Double) {
+        cooldowns[key] = duration
+        saveCooldowns()
+    }
+
+
+    private func saveCooldowns() {
+        if let encoded = try? JSONEncoder().encode(cooldowns) {
+            cooldownsData = encoded
+        }
+    }
+
+    private func reduceCooldowns() {
+        for (key, value) in cooldowns {
+            cooldowns[key] = max(0, value - 1)
+        }
+        saveCooldowns()
     }
 
     private func useHealthPotion() {
         let maxHp = maxHP(for: level)
         guard health < maxHp else { return }
-        let healAmount = maxHp * 0.35
-        health = min(health + healAmount, maxHp)
+
+        // Heal 50% of max HP over ~2 seconds
+        let healAmount = maxHp * 0.5
+        let duration: CGFloat = 2.0       // seconds
+        let tickInterval: CGFloat = 0.1   // same as manaTimer
+        let ticks = max(1, Int(duration / tickInterval))
+
+        healPerTick = healAmount / CGFloat(ticks)
+        healTicksRemaining = ticks
+
+        // 🔊 sound
+        scene.playHealSound()
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    private func useManaCrystal() {
+        let maxM = maxMana(for: level)
+        guard mana < maxM else { return }  // already full
+
+        mana = maxM
+        scene.playPowerUpSound()
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
@@ -412,13 +759,17 @@ struct ContentView: View {
     private func resetRunState() {
         health = maxHP(for: level)
         mana   = maxMana(for: level)
-        coinsThisRun = 0
+        coinsThisRun = 0 // RETURN TO ZERO AFTER TESTING
         xpThisRun = 0
         entKills = 0
         elfKills = 0
         druidKills = 0
         showDeathPopup = false
         hasBankedRunCoins = false
+        
+        //Mana shield
+        isManaShieldActive = false
+        scene.setManaShield(active: false)
     }
 
     private func bankCoinsIfNeeded() {
@@ -430,6 +781,7 @@ struct ContentView: View {
     private func bankCoinsIfNeededAndExitToMenu() {
         bankCoinsIfNeeded()
         scene.isPaused = false
+        scene.stopSceneCompletely()
         onExitToMenu()
     }
 
@@ -498,6 +850,9 @@ struct AnalogStickView: View {
 }
 
 // HP / Mana bars
+
+
+
 struct StatusBarsView: View {
     let health: CGFloat
     let mana: CGFloat
@@ -509,6 +864,14 @@ struct StatusBarsView: View {
             bar(current: health, maxValue: maxHP, color: .red)
             bar(current: mana,   maxValue: maxMana, color: .blue)
         }
+    }
+    
+    func spendMana(_ amount: CGFloat) -> Bool {
+        if mana >= amount {
+            mana - amount
+            return true
+        }
+        return false
     }
 
     private func bar(current: CGFloat, maxValue: CGFloat, color: Color) -> some View {
@@ -581,12 +944,16 @@ struct LevelBarView: View {
 struct QuickSlotButton: View {
     let item: ShopItem?
     let action: () -> Void
+    let cooldownRemaining: Double
 
     var body: some View {
         Button {
-            if item != nil { action() }
+            if item != nil && cooldownRemaining <= 0 {
+                action()
+            }
         } label: {
             ZStack {
+                // Slot background
                 RoundedRectangle(cornerRadius: 10)
                     .fill(Color.black.opacity(0.7))
                     .overlay(
@@ -595,22 +962,48 @@ struct QuickSlotButton: View {
                     )
                     .frame(width: 60, height: 60)
 
+                // Item Icon
                 if let item = item {
                     Image(item.imageName)
                         .resizable()
                         .interpolation(.none)
                         .scaledToFit()
                         .frame(width: 42, height: 42)
-                } else {
-                    Text("-")
-                        .font(.custom("PressStart2P-Regular", size: 10))
-                        .foregroundColor(.white.opacity(0.5))
+                        .opacity(cooldownRemaining > 0 ? 0.4 : 1.0)
+                }
+
+                // === COOLDOWN OVERLAY ===
+                if cooldownRemaining > 0 {
+                    ZStack {
+                        // Dark overlay
+                        Rectangle()
+                            .fill(Color.black.opacity(0.55))
+                            .frame(width: 60, height: 60)
+
+                        // Countdown number
+                        Text("\(Int(ceil(cooldownRemaining)))")
+                            .font(.custom("PressStart2P-Regular", size: 14))
+                            .foregroundColor(.white)
+                    }
                 }
             }
         }
         .buttonStyle(.plain)
     }
 }
+    private func cooldownMax(for item: ShopItem?) -> Double {
+        guard let item = item else { return 1 }
+        switch item.imageName {
+        case "manashield": return 30
+        case "lightningshield": return 45
+        case "rapidwand": return 60
+        case "blizzardspell": return 200
+        case "fireballspell": return 5
+        case "iceblock": return 60
+        default: return 1
+        }
+    }
+
 
 // Level up banner
 struct LevelUpBannerView: View {
@@ -643,12 +1036,14 @@ struct LevelUpBannerView: View {
 // Pause / Inventory overlay
 struct PauseOverlay: View {
     let coinsThisRun: Int
-    let inventory: PlayerInventory
+    @ObservedObject var inventory: PlayerInventory
     let isMuted: Bool
     let onClose: () -> Void
     let onMainMenu: () -> Void
     let onToggleMute: () -> Void
     let onSelectSlotItem: (ShopItem) -> Void
+
+    @State private var draggingIndex: Int? = nil
 
     var body: some View {
         ZStack {
@@ -670,34 +1065,13 @@ struct PauseOverlay: View {
                 .font(.custom("PressStart2P-Regular", size: 11))
                 .foregroundColor(.yellow)
 
+            // INVENTORY GRID
             LazyVGrid(
                 columns: Array(repeating: GridItem(.fixed(52), spacing: 8), count: 4),
                 spacing: 8
             ) {
                 ForEach(0..<16, id: \.self) { index in
-                    let item = inventory.slots[index]
-
-                    Button {
-                        if let item = item {
-                            onSelectSlotItem(item)
-                        }
-                    } label: {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color.white.opacity(0.6), lineWidth: 2)
-                                .background(Color.black.opacity(0.6))
-                                .frame(width: 52, height: 52)
-
-                            if let item = item {
-                                Image(item.imageName)
-                                    .resizable()
-                                    .interpolation(.none)
-                                    .scaledToFit()
-                                    .frame(width: 40, height: 40)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
+                    inventorySlot(at: index)
                 }
             }
             .padding(.top, 8)
@@ -745,7 +1119,60 @@ struct PauseOverlay: View {
         )
         .padding(.horizontal, 32)
     }
-}
+
+    // Single inventory slot view with drag & drop
+    private func inventorySlot(at index: Int) -> some View {
+        let item = inventory.slots[index]
+
+        return Button {
+            if let item = item {
+                onSelectSlotItem(item)
+            }
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color.white.opacity(0.6), lineWidth: 2)
+                    .background(
+                        (draggingIndex == index
+                         ? Color.white.opacity(0.15)
+                         : Color.black.opacity(0.6))
+                    )
+                    .frame(width: 52, height: 52)
+
+                if let item = item {
+                    Image(item.imageName)
+                        .resizable()
+                        .interpolation(.none)
+                        .scaledToFit()
+                        .frame(width: 40, height: 40)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .onDrag {
+            // Only start a meaningful drag if there is an item
+            guard let item = inventory.slots[index] else {
+                return NSItemProvider(object: "" as NSString)
+            }
+            draggingIndex = index
+            return NSItemProvider(object: item.id as NSString)
+        }
+        .onDrop(of: ["public.text"], isTargeted: nil) { _ in
+            guard let from = draggingIndex,
+                  from != index else {
+                draggingIndex = nil
+                return false
+            }
+
+            inventory.swapSlots(from, index)   // ✅ NO '$' here
+            draggingIndex = nil
+            return true
+        }
+
+    }
+
+    }
+
 
 // Equip slot chooser
 struct EquipSlotOverlay: View {
@@ -874,23 +1301,26 @@ struct DeathPopupOverlay: View {
     let druidKills: Int
     let onMainMenu: () -> Void
     let onTryAgain: () -> Void
-
+    let onRevive: () -> Void
+    let canRevive: Bool
+    
+    
     var body: some View {
         ZStack {
             Color.black
                 .opacity(0.8)
                 .ignoresSafeArea()
-
+            
             deathCard
         }
     }
-
+    
     private var deathCard: some View {
         VStack(spacing: 16) {
             Text("YOU DIED!")
                 .font(.custom("PressStart2P-Regular", size: 18))
                 .foregroundColor(.red)
-
+            
             VStack(alignment: .leading, spacing: 6) {
                 Text("Coins collected: \(coinsThisRun)")
                 Text("XP gained: \(xpThisRun)")
@@ -901,8 +1331,26 @@ struct DeathPopupOverlay: View {
             .font(.custom("PressStart2P-Regular", size: 9))
             .foregroundColor(.white)
             .padding(.horizontal, 8)
-
+            
             HStack(spacing: 18) {
+                
+                if canRevive {
+                    Button {
+                        onRevive()
+                    } label: {
+                        Text("REVIVE")
+                            .font(.custom("PressStart2P-Regular", size: 11))
+                            .foregroundColor(.green)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Color.black.opacity(0.9))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.green, lineWidth: 2)
+                            )
+                    }
+                }
+                
                 Button {
                     onMainMenu()
                 } label: {
@@ -917,7 +1365,7 @@ struct DeathPopupOverlay: View {
                                 .stroke(Color.white, lineWidth: 2)
                         )
                 }
-
+                
                 Button {
                     onTryAgain()
                 } label: {
@@ -934,15 +1382,5 @@ struct DeathPopupOverlay: View {
                 }
             }
         }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.blue.opacity(0.9))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.white, lineWidth: 3)
-                )
-        )
-        .padding(.horizontal, 32)
     }
 }

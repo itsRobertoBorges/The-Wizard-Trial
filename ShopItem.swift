@@ -10,6 +10,16 @@ struct ShopItem: Identifiable, Codable, Hashable {
     let desc: String
 }
 
+extension ShopItem {
+    var cooldownKey: String {
+        switch self.imageName {
+        case "blizzardspell": return "blizzard"
+        case "fireballspell": return "fireball"
+        default: return imageName
+        }
+    }
+}
+
 /// Global list of all items available in the shop.
 let shopItems: [ShopItem] = [
     ShopItem(
@@ -17,14 +27,14 @@ let shopItems: [ShopItem] = [
         imageName: "healthpotion",
         name: "Health Potion",
         price: 20,
-        desc: "A staple in any wizard’s pack. Restores a modest portion of vitality."
+        desc: "A staple in any wizard’s pack. Restores a modest portion of health."
     ),
     ShopItem(
         id: "manacrystal",
         imageName: "manacrystal",
         name: "Mana Crystal",
         price: 30,
-        desc: "Crackling with latent arcana. Restores your inner reserves of power."
+        desc: "Crackling with magic. Fully restores your mana."
     ),
     ShopItem(
         id: "manashield",
@@ -38,7 +48,7 @@ let shopItems: [ShopItem] = [
         imageName: "fairydust",
         name: "Fairy Dust",
         price: 40,
-        desc: "Bottled wonder from ancient groves. Fills your health bar."
+        desc: "Bottled wonder from ancient groves. Fully restores your health bar."
     ),
     ShopItem(
         id: "lightningshield",
@@ -52,7 +62,7 @@ let shopItems: [ShopItem] = [
         imageName: "rapidwand",
         name: "Rapid Wand",
         price: 55,
-        desc: "Light as a reed; swift as thought. Increases casting speed."
+        desc: "Light as a reed; swift as thought. Increases casting speed by 50%."
     ),
     ShopItem(
         id: "blizzardspell",
@@ -66,14 +76,14 @@ let shopItems: [ShopItem] = [
         imageName: "fireballspell",
         name: "Fire Ball Spell",
         price: 35,
-        desc: "Old faithful of battlemages. Hurls a blazing orb at your target. Bounces 3 times"
+        desc: "Old faithful of battlemages. Hurls a blazing orb at your targets. Bounces 8 times"
     ),
     ShopItem(
         id: "iceblock",
         imageName: "iceblock",
         name: "Ice Block",
         price: 35,
-        desc: "Become encased in frost to shrug off danger—for a moment."
+        desc: "Encases you in a shimmering ice block! Keeps you immune from all harm and damages those who it for 10 seconds, you can't move or attack, but you can use items.."
     ),
     ShopItem(
         id: "revive",
