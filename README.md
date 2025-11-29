@@ -103,9 +103,8 @@ Each spell includes:
 
 ## About the Developer
 
-**The Wizard’s Trial** is built by **Roberto Borges**, a solo developer blending classic fantasy storytelling with modern gameplay, pixel art, and atmospheric world-building.
+**The Wizard’s Trial** is built by **Roberto Borges**, a solo developer blending classic, retro-fantasy storytelling with modern gameplay, pixel art, and atmospheric world-building. Inspired by games such as Diablo 2, The Legend of Zelda, World of Warcraft and survivor.io
 
-Follow development on Instagram: **@christpilleddomain**
 
 ---
 
