@@ -33,35 +33,24 @@ Below are the cinematic scenes from the first chapter.
 
 ### Scene 1 — The Withering Begins  
 *The forest decays. Shadows coil. Magic falters.*  
-![WitheringForest1](./WitheringForest1.png)
+![WitheringForest1](./witheringforest1.png)
 
 ### Scene 2 — Echoes of the Fallen Woods  
 *Ancient runes stir. Something colossal watches from below.*  
-![WitheringForest2](./WitheringForest2.png)
+![WitheringForest2](./witheringforest2.png)
 
 ### Scene 3 — The Chamber of Bohban  
 *Stone splits. Roots twist. Bohban awakens.*  
-![WitheringForest3](./WitheringForest3.png)
+![WitheringForest3](./witheringforest3.png)
 
 ### Scene 4 — Bohban’s Wrath  
 *Corruption surges. The sanctum shakes.*  
-![WitheringForest4](./WitheringForest4.png)
+![WitheringForest4](./witheringforest4.png)
 
 ### Scene 5 — The Sage of Earth Appears  
 *Green holy fire erupts. A guardian returns.*  
-![WitheringForest5](./WitheringForest5.png)
+![WitheringForest5](./witheringforest5.png)
 
-### Scene 6 — His Words to the Apprentice  
-*“Rise. Your trial has only begun.”*  
-![WitheringForest6](./WitheringForest6.png)
-
-### Scene 7 — The Titan Falls  
-*Bohban collapses. Roots tremble in relief.*  
-![WitheringForest7](./WitheringForest7.png)
-
-### Scene 8 — The Forest Breathes Again  
-*Light returns. Your path opens forward.*  
-![WitheringForest8](./WitheringForest8.png)
 
 ---
 
