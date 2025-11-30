@@ -31,6 +31,11 @@ struct MainMenuView: View {
     @State private var selectedIndex: Int = 0
     @State private var showPlaceholderAlert = false
     @State private var placeholderText = ""
+    
+    @State private var showWorldSelect = false
+    @State private var showGame = false
+    @State private var showWitheringForestIntro = false
+
 
     var body: some View {
         ZStack {

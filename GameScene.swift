@@ -2,6 +2,7 @@ import SpriteKit
 import UIKit
 import Combine
 import AVFoundation
+import SwiftUI
 
 // Collision categories
 struct Cat {
@@ -16,6 +17,10 @@ struct Cat {
 }
 
 final class GameScene: SKScene, SKPhysicsContactDelegate {
+    
+    // Player inventory
+    private var inventory: [String: Int] = [:]
+
     
     // --------------------------------------------------------
     // MARK: Waves
@@ -179,6 +184,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     var coinsPublisher: AnyPublisher<Int, Never> { coinsSubject.eraseToAnyPublisher() }
     var startedPublisher: AnyPublisher<Void, Never> { startedSubject.eraseToAnyPublisher() }
     var gameOverPublisher: AnyPublisher<Void, Never> { gameOverSubject.eraseToAnyPublisher() }
+    private let bossDefeatedSubject = PassthroughSubject<Void, Never>()
+    var bossDefeatedPublisher: AnyPublisher<Void, Never> {
+        bossDefeatedSubject.eraseToAnyPublisher()
+    }
+
 
     private var bgmPlayer: AVAudioPlayer?
     private var isGameOver = false
@@ -210,7 +220,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private let minFireInterval: TimeInterval = 0.18
     private var attackSpeedMultiplier: CGFloat = 1.0
     
+    // BOHBAN BOSS
+    private var bohban: BohbanNode?
+    private var lastBossUpdate: TimeInterval = 0
 
+    
     // ENT enemies
     private var ents: [EntNode] = []
     private let entSpeed: CGFloat = 90   // tweak as needed
@@ -224,16 +238,74 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // --------------------------------------------------------
     // MARK: Scene lifecycle
     // --------------------------------------------------------
+    
+    func goToMainMenu() {
+        guard let view = self.view else { return }
+
+        let menu = MainMenuView(
+            onPlay: { [weak view] in
+                guard let view = view else { return }
+                let newScene = GameScene(size: view.bounds.size)
+                newScene.scaleMode = .aspectFill
+                view.presentScene(newScene, transition: .fade(withDuration: 1.0))
+            },
+            onShop: { [weak view] in
+                guard let view = view else { return }
+                let shop = ShopView(onExit: {
+                    // Return to menu when exiting shop
+                    self.goToMainMenu()
+                })
+                .environmentObject(PlayerInventory.shared)   // IMPORTANT
+
+                let hosting = UIHostingController(rootView: shop)
+                view.window?.rootViewController = hosting
+            }
+        )
+
+        // Present the SwiftUI MainMenu
+        let hosting = UIHostingController(rootView: menu)
+        view.window?.rootViewController = hosting
+    }
+
+    func handleBohbanDefeat() {
+
+        // Stop all actions
+        self.removeAllActions()
+
+        // Fade-to-black layer
+        let black = SKSpriteNode(color: .black, size: size)
+        black.zPosition = 99999
+        black.alpha = 0
+        black.position = CGPoint(x: size.width/2, y: size.height/2)
+        addChild(black)
+
+        black.run(.sequence([
+            .fadeIn(withDuration: 1.2),
+            .wait(forDuration: 0.8),
+            .run { [weak self] in
+                // 🔥 Notify SwiftUI that Bohban is dead → start outro
+                self?.bossDefeatedSubject.send(())
+            }
+        ]))
+    }
+
 
     override func didMove(to view: SKView) {
         buildBackgroundIfNeeded()
         layoutBackground()
-
         backgroundColor = .black
         physicsWorld.gravity = .zero
         physicsWorld.contactDelegate = self
 
         view.isMultipleTouchEnabled = true
+        
+        //inventory
+        coins = SaveManager.shared.loadCoins()
+        coinsSubject.send(coins)
+
+        inventory = SaveManager.shared.loadInventory()
+
+    
 
         configureFingerNode()
         configureWizardNode()
@@ -280,33 +352,152 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: Public API for SwiftUI
     // --------------------------------------------------------
 
+
+    // Bohban UI
+    private var bohbanHealthBarBG = SKShapeNode()
+    private var bohbanHealthBarFill = SKShapeNode()
+    private var bohbanNameLabel = SKLabelNode(fontNamed: "PressStart2P-Regular")
+
+    func createBohbanHealthBar() {
+
+        // Remove old UI if somehow exists
+        bohbanHealthBarBG.removeFromParent()
+        bohbanHealthBarFill.removeFromParent()
+        bohbanNameLabel.removeFromParent()
+
+        let barWidth: CGFloat = 22
+        let barHeight: CGFloat = size.height * 0.42
+        let xPos = size.width - 60
+        let yPos = size.height / 2
+
+        // OUTLINE
+        let bgRect = CGRect(x: -barWidth/2, y: -barHeight/2, width: barWidth, height: barHeight)
+        bohbanHealthBarBG = SKShapeNode(rect: bgRect, cornerRadius: 4)
+        bohbanHealthBarBG.strokeColor = .white
+        bohbanHealthBarBG.lineWidth = 4
+        bohbanHealthBarBG.fillColor = .clear
+        bohbanHealthBarBG.position = CGPoint(x: xPos, y: yPos)
+        bohbanHealthBarBG.zPosition = 999
+        addChild(bohbanHealthBarBG)
+
+        // FILL BAR
+        let fillRect = CGRect(x: -barWidth/2 + 3,
+                              y: -barHeight/2 + 3,
+                              width: barWidth - 6,
+                              height: barHeight - 6)
+
+        bohbanHealthBarFill = SKShapeNode(rect: fillRect, cornerRadius: 3)
+        bohbanHealthBarFill.fillColor = .green
+        bohbanHealthBarFill.strokeColor = .clear
+        bohbanHealthBarFill.position = CGPoint(x: xPos, y: yPos)
+        bohbanHealthBarFill.zPosition = 1000
+        addChild(bohbanHealthBarFill)
+
+        // NAME LABEL
+        bohbanNameLabel = SKLabelNode(fontNamed: "PressStart2P-Regular")
+        bohbanNameLabel.text = "BOHBAN THE TITAN"
+        bohbanNameLabel.fontSize = 18
+        bohbanNameLabel.fontColor = .white
+        bohbanNameLabel.position = CGPoint(x: xPos + 40, y: yPos)
+        bohbanNameLabel.zRotation = .pi / 2
+        bohbanNameLabel.zPosition = 1001
+        addChild(bohbanNameLabel)
+    }
+
+    
+    func updateBohbanHealthBar(currentHP: Int, maxHP: Int) {
+        let percent = max(0, min(1, CGFloat(currentHP) / CGFloat(maxHP)))
+
+        let fullHeight = size.height * 0.42 - 6
+        let barWidth: CGFloat = 22 - 6
+        let newHeight = fullHeight * percent
+
+        let fillRect = CGRect(
+            x: -barWidth/2,
+            y: -(fullHeight/2),
+            width: barWidth,
+            height: newHeight
+        )
+
+        bohbanHealthBarFill.path = CGPath(rect: fillRect, transform: nil)
+    }
+
+
+
+
+
     public func begin() {
         guard !hasStarted, !isGameOver else { return }
         hasStarted = true
         startedSubject.send(())
         startScoringAndSpawns()
+        
     }
+ 
+    
+    func showOrbExplosion(at p: CGPoint) {
+        let explosion = SKEmitterNode()
+
+        explosion.particleTexture = SKTexture(imageNamed: "pixel")  // a tiny 1x1 pixel (or I can generate one)
+        explosion.particleBirthRate = 500
+        explosion.numParticlesToEmit = 40
+        explosion.particleLifetime = 0.35
+        explosion.particleLifetimeRange = 0.2
+
+        explosion.particlePositionRange = CGVector(dx: 20, dy: 20)
+
+        explosion.particleSpeed = 180
+        explosion.particleSpeedRange = 60
+
+        explosion.particleAlpha = 1.0
+        explosion.particleAlphaSpeed = -3.0
+
+        explosion.particleScale = 3.0
+        explosion.particleScaleSpeed = -3.0
+
+        explosion.particleColor = UIColor.green
+        explosion.particleColorBlendFactor = 1.0
+
+        explosion.position = p
+        explosion.zPosition = 999
+
+        addChild(explosion)
+
+        explosion.run(.sequence([
+            .wait(forDuration: 0.45),
+            .removeFromParent()
+        ]))
+    }
+
     
     public func fullReset() {
+
+        // STOP EVERYTHING
         removeAllActions()
+        children.forEach { $0.removeAllActions() }
+        children.forEach { $0.removeFromParent() }
 
-        children
-            .filter {
-                let cat = $0.physicsBody?.categoryBitMask
-                return cat == Cat.veggie ||
-                       cat == Cat.missile ||
-                       cat == Cat.ent ||
-                       cat == Cat.elf ||
-                       cat == Cat.elfArrow ||
-                       cat == Cat.druid ||
-                       cat == Cat.druidOrb
-            }
-            .forEach { $0.removeFromParent() }
+        // Restore background
+        arenaBackground = nil
+        buildBackgroundIfNeeded()
+        layoutBackground()
 
+        // Reset arrays
         ents.removeAll()
         woodlandElves.removeAll()
         woodlandDruids.removeAll()
 
+        // Reset boss
+        bohban?.removeAllActions()
+        bohban?.removeFromParent()
+        bohban = nil
+
+        // Remove Bohban UI
+        bohbanHealthBarBG.removeFromParent()
+        bohbanHealthBarFill.removeFromParent()
+        bohbanNameLabel.removeFromParent()
+
+        // Reset states
         isGameOver = false
         hasStarted = false
         coins = 0
@@ -317,8 +508,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         updateWizardTexture()
 
         coinsSubject.send(0)
-        waveSubject.send(1)      // reset wave display
+        waveSubject.send(1)
 
+        // Reset BGM
         bgmPlayer?.stop()
         bgmPlayer?.currentTime = 0
         bgmPlayer?.volume = 1.0
@@ -327,12 +519,24 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         setupWaves()
     }
 
-    //Woodland boss (later)
-//    if currentWaveIndex >= waves.count {
-//        // All 49 waves complete → boss time
-//        spawnBoss()
-//        return
-//    }
+
+    
+    // Bohban
+    
+    func spawnBohban() {
+        if bohban != nil { return }
+
+        let boss = BohbanNode(screenWidth: size.width, scene: self)
+        bohban = boss
+
+        addChild(boss)
+        boss.runEntrance(in: self)
+        createBohbanHealthBar()
+    }
+
+
+
+
 
     // --------------------------------------------------------
     // MARK: Waves / Spawning + scoring
@@ -511,7 +715,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         run(.repeatForever(.sequence([spawn, wait])), withKey: "druidSpawns")
     }
 
-    private func spawnWoodlandDruid() {
+     func spawnWoodlandDruid() {
         guard !isGameOver else { return }
 
         // pick a side: 0=left,1=right,2=top,3=bottom
@@ -576,7 +780,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: Enemy spawn telegraph (veggies – currently unused)
     // --------------------------------------------------------
 
-    private func showWizardCast(
+     func showWizardCast(
         at position: CGPoint,
         radius r: CGFloat,
         duration: TimeInterval = 2.0,
@@ -610,8 +814,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // --------------------------------------------------------
     // MARK: ENT spawn
     // --------------------------------------------------------
-
-    private func spawnEnt() {
+    
+     func spawnEnt() {
         guard !isGameOver else { return }
 
         let margin: CGFloat = 60
@@ -630,7 +834,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: Woodland elf spawn
     // --------------------------------------------------------
 
-    private func spawnWoodlandElf() {
+     func spawnWoodlandElf() {
         guard !isGameOver else { return }
 
         let marginX: CGFloat = 40
@@ -726,6 +930,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     override func update(_ currentTime: TimeInterval) {
         guard hasStarted, !isGameOver else { return }
         if lastUpdate == 0 { lastUpdate = currentTime }
+        if lastBossUpdate == 0 { lastBossUpdate = currentTime }
+
 
         let dt = min(currentTime - lastUpdate, 1/30)
         lastUpdate = currentTime
@@ -753,28 +959,73 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             while blizzardDamageAccumulator >= 0.2 {   // every 0.2 sec
                 blizzardDamageAccumulator -= 0.2
 
+                // === ENT DAMAGE ===
                 for ent in ents {
-                    let d = hypot(ent.position.x - fingerNode.position.x,
-                                  ent.position.y - fingerNode.position.y)
-                    // Blizzard radius: whole screen
                     let died = ent.takeDamage(20)
                     if died { awardXP(20); entKillSubject.send(1) }
                     ent.speedMultiplier = blizzardSlowMultiplier
                 }
 
+                // === ELF DAMAGE ===
                 for elf in woodlandElves {
                     let died = elf.takeDamage(20)
                     if died { awardXP(15); elfKillSubject.send(1) }
                     elf.speedMultiplier = blizzardSlowMultiplier
                 }
 
+                // === DRUID DAMAGE ===
                 for druid in woodlandDruids {
                     let died = druid.takeDamage(20)
                     if died { awardXP(30); druidKillSubject.send(1) }
                     druid.speedMultiplier = blizzardSlowMultiplier
                 }
+
+                // === ⭐️ BOHBAN DAMAGE ⭐️ ===
+                if let boss = bohban, boss.parent != nil {
+                    let died = boss.takeDamage(20)
+
+                    // Update boss HP bar
+                    updateBohbanHealthBar(currentHP: boss.hp, maxHP: 2000)
+
+                    if died {
+                        // Remove UI
+                        bohbanHealthBarBG.removeFromParent()
+                        bohbanNameLabel.removeFromParent()
+                    }
+                }
             }
         }
+
+        
+        // === Update Bohban (attacks, movement timing) ===
+        if let boss = bohban {
+            let dt = currentTime - lastBossUpdate
+            lastBossUpdate = currentTime
+            boss.update(dt: dt, playerPosition: fingerNode.position, scene: self)
+        }
+        
+        func showBohbanExplosion(at p: CGPoint) {
+            let node = SKSpriteNode(imageNamed: "bohbanexplode")
+            node.zPosition = 999
+            node.position = p
+            node.alpha = 0.0
+            node.setScale(0.1)
+
+            addChild(node)
+
+            let fadeIn = SKAction.fadeAlpha(to: 1.0, duration: 0.05)
+            let grow = SKAction.scale(to: 1.4, duration: 0.25)
+            let fadeOut = SKAction.fadeOut(withDuration: 0.25)
+
+            node.run(.sequence([
+                fadeIn,
+                grow,
+                fadeOut,
+                .removeFromParent()
+            ]))
+        }
+
+
 
         // ===== FIREBALL BOUNCING =====
         for node in children {
@@ -860,17 +1111,47 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                         }
                     }
                 }
+                
+                for druid in woodlandDruids {
+                    guard druid.parent != nil else { continue }
+                    let d = hypot(druid.position.x - center.x, druid.position.y - center.y)
+                    if d <= auraRadius {
+                        let died = druid.takeDamage(10)
+                        if died {
+                            awardXP(40)
+                            druidKillSubject.send(1)
+                        }
+                    }
+                }
+                
+                // === BOHBAN (Boss) ===
+                if let boss = bohban, boss.parent != nil {
+                    let d = hypot(boss.position.x - center.x, boss.position.y - center.y)
+                    if d <= auraRadius {
+
+                        let died = boss.takeDamage(25)   // or whatever storm aura damage you want
+
+                        // Update UI
+                        updateBohbanHealthBar(currentHP: boss.hp, maxHP: 2000)
+
+                        if died {
+                            // Remove UI
+                            bohbanHealthBarBG.removeFromParent()
+                            bohbanNameLabel.removeFromParent()
+                        }
+                    }
+                }
+
             }
         }
         
         // === ICE BLOCK CONTACT DAMAGE ===
         if isIceBlockActive {
-            // damage rate = 20 DPS → 2 damage every 0.1 sec
             iceBlockDamageAccumulator += dt
 
             while iceBlockDamageAccumulator >= 0.1 {
                 iceBlockDamageAccumulator -= 0.1
-                
+                        
                 let center = fingerNode.position
                 let radius: CGFloat = max(wizardNode.frame.width, wizardNode.frame.height) * 0.8
 
@@ -900,8 +1181,25 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                         if died { awardXP(40); druidKillSubject.send(1) }
                     }
                 }
+
+                // ⭐️ === BOHBAN DAMAGE === ⭐️
+                if let boss = bohban, boss.parent != nil {
+                    let d = hypot(boss.position.x - center.x, boss.position.y - center.y)
+                    if d <= radius {
+                        let died = boss.takeDamage(20)
+
+                        // Update health bar
+                        updateBohbanHealthBar(currentHP: boss.hp, maxHP: 2000)
+
+                        if died {
+                            bohbanHealthBarBG.removeFromParent()
+                            bohbanNameLabel.removeFromParent()
+                        }
+                    }
+                }
             }
         }
+
 
         
 
@@ -956,6 +1254,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             coinAccumulator -= 1
             coins += 1
             coinsSubject.send(coins)
+            SaveManager.shared.saveCoins(coins)
         }
 
         cleanupOffscreen()
@@ -963,21 +1262,88 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         woodlandElves.removeAll { $0.parent == nil }
         woodlandDruids.removeAll { $0.parent == nil }
         
-        // Wave completion check
         if waveInProgress &&
-           ents.isEmpty &&
-           woodlandElves.isEmpty {
+            ents.isEmpty &&
+            woodlandElves.isEmpty &&
+            woodlandDruids.isEmpty {
 
             waveInProgress = false
 
-            // Small breather before next wave
-            let wait = SKAction.wait(forDuration: 2.0)
-            let next = SKAction.run { [weak self] in
-                self?.startNextWave()
+            // If final wave (49), spawn boss instead of next wave
+            if currentWaveIndex + 1 >= 49 {
+                run(.sequence([
+                    .wait(forDuration: 1.5),
+                    .run { [weak self] in self?.startBohbanBossFight() }
+                ]))
+            } else {
+                run(.sequence([
+                    .wait(forDuration: 2.0),
+                    .run { [weak self] in self?.startNextWave() }
+                ]))
             }
-            run(.sequence([wait, next]))
         }
     }
+    
+    func startBohbanBossFight() {
+        
+        // Change background
+        if let bg = arenaBackground {
+            bg.texture = SKTexture(imageNamed: "bohbanarena")
+            bg.texture?.filteringMode = .nearest
+            layoutBackground()
+        }
+
+        // Stop current music
+        bgmPlayer?.stop()
+
+        // Play Bohban theme
+        if let url = Bundle.main.url(forResource: "bohbantheme", withExtension: "mp3") {
+            do {
+                let p = try AVAudioPlayer(contentsOf: url)
+                p.numberOfLoops = -1
+                p.volume = 1.0
+                p.play()
+                bgmPlayer = p
+            } catch {
+                print("ERROR playing Bohban theme:", error)
+            }
+        }
+
+        // Spawn the boss
+        bohban = BohbanNode(screenWidth: size.width, scene: self)
+        bohban = BohbanNode(screenWidth: size.width, scene: self)
+        if let b = bohban {
+            addChild(b)
+            createBohbanHealthBar()
+            b.runEntrance(in: self)
+
+            // 💥 Connect boss-death callback
+            b.onBossDeath = { [weak self] in
+                self?.handleBohbanDefeat()
+            }
+        }
+
+    }
+    
+    func onBohbanDeath() {
+        // Stop his music immediately
+        bgmPlayer?.setVolume(0.0, fadeDuration: 1.0)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.bgmPlayer?.stop()
+            self.bgmPlayer = nil
+        }
+
+        bgmPlayer = nil
+
+        // Optional: fade whole screen and return to menu
+        run(.sequence([
+            .wait(forDuration: 1.0),
+            .run { [weak self] in
+                self?.goToMainMenu()
+            }
+        ]))
+    }
+
     
     private func deactivateIceBlock() {
         guard isIceBlockActive else { return }
@@ -1010,24 +1376,32 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     public func castFireball() {
         guard !isGameOver else { return }
 
-        // Get analog direction (movement stick)
+        // Spend mana
+        guard trySpendMana(15) else {
+            run(.playSoundFileNamed("notenoughmana.wav", waitForCompletion: false))
+            return
+        }
+        guard isSpellReady("fireball") else { return }
+
         let dx = movementInput.dx
         let dy = movementInput.dy
         let mag = hypot(dx, dy)
 
-        // Ensure the player is actually aiming
-        guard mag > 0.2 else { return }
-        
-        guard trySpendMana(15) else { return }
-        guard isSpellReady("fireball") else { return }
+        // Default direction is upward if not aiming
+        let ux: CGFloat
+        let uy: CGFloat
 
-
-        // Normalize direction
-        let ux = dx / mag
-        let uy = dy / mag
+        if mag < 0.2 {
+            ux = 0
+            uy = 1     // straight up fireball
+        } else {
+            ux = dx / mag
+            uy = dy / mag
+        }
 
         spawnFireball(ux: ux, uy: uy)
     }
+
 
     private func spawnFireball(ux: CGFloat, uy: CGFloat) {
 
@@ -1318,20 +1692,13 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     public func tryActivateLightningShield() {
-        guard trySpendMana(40) == true else {
-            run(.playSoundFileNamed("notenoughmana.wav", waitForCompletion: false))
-            return
-        }
-
+        // Mana + cooldown are already handled in ContentView
         guard !isStormAuraActive else { return }
 
         setStormAura(active: true)
         playLightningSpellSound()
-        
-        guard trySpendMana(40) else { return }
-        guard isSpellReady("lightningshield") else { return }
 
-
+        // Auto-disable after 10 seconds
         run(.sequence([
             .wait(forDuration: 10.0),
             .run { [weak self] in self?.setStormAura(active: false) }
@@ -1399,6 +1766,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func cleanupOffscreen() {
         let pad: CGFloat = 100
         for node in children {
+            if node is BohbanNode {continue}
             guard let cat = node.physicsBody?.categoryBitMask else { continue }
 
             if cat == Cat.missile ||
@@ -1428,10 +1796,21 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let b = contact.bodyB
         let mask = a.categoryBitMask | b.categoryBitMask
         
-        //ICE BLOCK NO DAMAGE
-        
-        if isIceBlockActive {
-            return  // completely ignore all damage while frozen
+        //Bohban Damage
+        if mask == (Cat.missile | Cat.druid) {
+            let bossBody = (a.categoryBitMask == Cat.druid) ? a : b
+            let missileBody = (bossBody == a) ? b : a
+
+            if let bohban = bossBody.node as? BohbanNode {
+                let died = bohban.takeDamage(10)   // same as Ent/Elf damage
+
+                missileBody.node?.removeFromParent()
+
+                if died {
+                    bohbanHealthBarBG.removeFromParent()
+                    bohbanNameLabel.removeFromParent()
+                }
+            }
         }
 
         
@@ -1474,6 +1853,17 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                     let died = druid.takeDamage(50)
                     if died { awardXP(40); druidKillSubject.send(1) }
                 }
+                
+                if let boss = bohban, boss.parent != nil {
+                    let died = boss.takeDamage(20)
+                    
+                    updateBohbanHealthBar(currentHP: boss.hp, maxHP: 2000)
+                    
+                    if died {
+                        bohbanHealthBarBG.removeFromParent()
+                        bohbanNameLabel.removeFromParent()
+                    }
+                }
 
                 // Hit effect
                 showHitPop(at: fireballBody.node!.position)
@@ -1483,26 +1873,34 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
 
 
-        // Player hit by veggie (if you ever bring them back)
-        if mask == (Cat.finger | Cat.veggie) {
-            if a.categoryBitMask == Cat.veggie { a.node?.removeFromParent() }
-            if b.categoryBitMask == Cat.veggie { b.node?.removeFromParent() }
-
-            damageSubject.send(10)
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            return
-        }
+//        // Player hit by veggie (if you ever bring them back)
+//        if mask == (Cat.finger | Cat.veggie) {
+//            if a.categoryBitMask == Cat.veggie { a.node?.removeFromParent() }
+//            if b.categoryBitMask == Cat.veggie { b.node?.removeFromParent() }
+//
+//            damageSubject.send(10)
+//            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+//            return
+//        }
 
         // Player hit by ENT → explode + 25 damage
+        // Player hit by ENT → explode + 25 damage (unless shielded)
         if mask == (Cat.finger | Cat.ent) {
             let entBody = (a.categoryBitMask == Cat.ent) ? a : b
             if let ent = entBody.node as? EntNode {
                 ent.explode()
             }
+
+            // ⚡ Lightning Shield OR 🧊 Ice Block = no HP loss
+            if isStormAuraActive || isIceBlockActive {
+                return
+            }
+
             damageSubject.send(25)
             UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
             return
         }
+
 
         // Missile hits ENT
         if mask == (Cat.missile | Cat.ent) {
@@ -1564,6 +1962,11 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             let arrowBody = (a.categoryBitMask == Cat.elfArrow) ? a : b
             arrowBody.node?.removeFromParent()
 
+            // Shields eat the hit, no HP loss
+            if isStormAuraActive || isIceBlockActive {
+                return
+            }
+
             damageSubject.send(15)
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
             return
@@ -1571,13 +1974,25 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         // Player hit by druid orb
         if mask == (Cat.finger | Cat.druidOrb) {
-            let orbBody = (a.categoryBitMask == Cat.druidOrb) ? a : b
-            orbBody.node?.removeFromParent()
 
-            damageSubject.send(35) // big hit
+            let orbBody = (a.categoryBitMask == Cat.druidOrb) ? a : b
+            let hitPos = orbBody.node?.position ?? .zero
+
+            orbBody.node?.removeFromParent()
+            bohban?.showExplosion(at: hitPos, scene: self)
+
+            // Shields absorb it
+            if isStormAuraActive || isIceBlockActive {
+                return
+            }
+
+            damageSubject.send(35)
             UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
             return
         }
+
+
+
         
         // Missile hits woodland druid
         if mask == (Cat.missile | Cat.druid) {
@@ -1764,8 +2179,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func nudgePosition(_ p: CGPoint, awayFrom center: CGPoint, minDistance: CGFloat) -> CGPoint {
-        var dx = p.x - center.x
-        var dy = p.y - center.y
+        let dx = p.x - center.x
+        let dy = p.y - center.y
         var len = hypot(dx, dy)
         if len == 0 { len = 0.001 }
         if len >= minDistance { return p }

@@ -2,10 +2,13 @@ import SwiftUI
 import AVFoundation
 
 struct WitheringForestIntroView: View {
-    var onFinished: () -> Void
 
-    // Your 6 cinematic images
-    private let images = [
+    // MARK: - Navigation
+    let onFinish: () -> Void
+
+    // MARK: - Scenes
+    @State private var currentScene = 0
+    private let sceneImages = [
         "witheringforest1",
         "witheringforest2",
         "witheringforest3",
@@ -14,180 +17,182 @@ struct WitheringForestIntroView: View {
         "witheringforest6"
     ]
 
-    // Typewriter text for each scene
-    private let lines = [
+    private let sceneTexts = [
         "The Apprentice steps beyond the last healthy tree… and the forest falls silent.\nEvery branch droops as though strangled by unseen hands.\nThe air grows thick with decay, clinging to the lungs like damp ash.",
         "He walks on.\nThrough endless rot.\nThrough corrupted roots.\nThrough the graveyard of what was once a living kingdom.",
-        "And then—towering in the choking gloom—\nthe Withering Tree.\nA colossal husk of wood and sorrow… the last place the Sage of Earth was ever seen alive.",
-        "With steady breath, the Apprentice enters the once-mighty tree,\nonly to find its heart infested.\nThe inhabitants of these lands—twisted, hollowed, corrupted by Zethex—roam as a mindless army.",
-        "At the far end of the chamber stands the ancient stone door…\nThe entrance to the Sage’s throne room.\nBut it is sealed—guarded by Bohban the Titan.",
-        "To free the Sage of Earth… to cleanse the forest… to reclaim what life remains…\nThe Apprentice must face the corrupted horde…\nand strike down Bohban the Titan."
+        "And then, towering in the choking gloom,\nthe Withering Tree.\nA colossal husk of wood and sorrow…\nthe last place the Sage of Earth was ever seen alive.",
+        "He enters the once mighty tree.\nIts heart now infested with twisted beings.\nCreatures corrupted by Zethex’s necrotic power roam without mind or mercy.",
+        "At the far end stands the ancient stone door…\nThe entrance to the Sage’s throne room.\nBut it is guarded by Bohban the Titan,\nZethex’s monstrous enforcer.",
+        "To free the Sage of Earth…\nto cleanse the forest…\nto reclaim what life remains…\nThe Apprentice must strike down Bohban the Titan."
     ]
 
     // MARK: - Typewriter State
-    @State private var idx = 0
-    @State private var shown = ""
-    @State private var isTyping = true
-    @State private var charIndex = 0
-    @State private var timer: Timer?
-    private let charDelay: TimeInterval = 0.028
+    @State private var typedText = ""
+    @State private var isTyping = false
+    @State private var typeTimer: Timer?
+    @State private var textIndex = 0
 
-    // Crossfade
-    @State private var fadeIn = true
-    private let fadeDuration: Double = 0.55
-
-    // Audio
+    // MARK: - Audio
     @State private var bgmPlayer: AVAudioPlayer?
-    @State private var typeSFX: AVAudioPlayer?
+    @State private var scrollPlayer: AVAudioPlayer?
 
     var body: some View {
         ZStack {
-            // Background
             Color.black.ignoresSafeArea()
 
+            // MARK: - Cinematic Image
             GeometryReader { geo in
-                Image(images[idx])
+                Image(sceneImages[currentScene])
                     .resizable()
                     .interpolation(.none)
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: geo.size.width, height: geo.size.height)
+                    .scaledToFill()
+                    .frame(width: geo.size.width,
+                           height: geo.size.height)
                     .clipped()
-                    .opacity(fadeIn ? 1 : 0)
-                    .animation(.easeInOut(duration: fadeDuration), value: fadeIn)
+                    .ignoresSafeArea()
             }
 
             VStack {
-                HStack {
-                    Spacer()
-                    Button("Skip") {
-                        stopTypingTimer()
-                        stopTypingSFX()
-                        stopIntroBGM()
-                        onFinished()
-                    }
-                    .font(.system(size: 14, weight: .bold))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .padding(.top, 12)
-                    .padding(.trailing, 14)
-                }
                 Spacer()
+
+                // MARK: - Textbox
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.black.opacity(0.65))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 180)
+                        .padding(.horizontal, 18)
+
+                    Text(typedText)
+                        .font(.custom("PressStart2P-Regular", size: 12))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 28)
+                        .padding(.vertical, 12)
+                        .multilineTextAlignment(.leading)
+                }
+
+                // MARK: - Continue Button
+                Button(action: nextScene) {
+                    Text(currentScene == sceneTexts.count - 1 ? "BEGIN" : "CONTINUE")
+                        .font(.custom("PressStart2P-Regular", size: 14))
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(Color.yellow, in: Capsule())
+                }
+                .padding(.top, 12)
+
+                // MARK: - Skip Button
+                Button(action: skipCinematic) {
+                    Text("SKIP")
+                        .font(.custom("PressStart2P-Regular", size: 12))
+                        .foregroundColor(.white.opacity(0.7))
+                        .padding(.top, 6)
+                }
+
+                Spacer().frame(height: 20)
             }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            IntroCaptionBar(text: shown)
-                .onTapGesture { handleTap() }
         }
         .onAppear {
-            fadeIn = true
-            startIntroBGM()
-            startTyping()
+            startMusic()
+            startScene(0)
         }
         .onDisappear {
-            stopTypingTimer()
-            stopIntroBGM()
-            stopTypingSFX()
+            stopAllAudio()
         }
     }
 
-    // MARK: - Typewriter
-    private func startTyping() {
-        shown = ""
+    // MARK: - Play scene
+    private func startScene(_ index: Int) {
+        typedText = ""
+        textIndex = 0
         isTyping = true
-        charIndex = 0
-        stopTypingTimer()
-        stopTypingSFX()
-        startTypingSFX()
+        playScrollSound()
 
-        timer = Timer.scheduledTimer(withTimeInterval: charDelay, repeats: true) { t in
-            let full = lines[idx]
-            guard charIndex < full.count else {
-                isTyping = false
-                t.invalidate()
-                stopTypingSFX()
-                return
-            }
-            let i = full.index(full.startIndex, offsetBy: charIndex)
-            shown.append(full[i])
-            charIndex += 1
-        }
-    }
+        let fullText = sceneTexts[index]
 
-    private func stopTypingTimer() {
-        timer?.invalidate()
-        timer = nil
-    }
-
-    private func handleTap() {
-        let full = lines[idx]
-
-        if isTyping {
-            stopTypingTimer()
-            shown = full
-            isTyping = false
-            stopTypingSFX()
-        } else {
-            if idx < images.count - 1 {
-                // Fade out → next → fade in
-                withAnimation(.easeInOut(duration: fadeDuration)) { fadeIn = false }
-                DispatchQueue.main.asyncAfter(deadline: .now() + fadeDuration) {
-                    idx += 1
-                    fadeIn = true
-                    startTyping()
-                }
+        // Typewriter timer
+        typeTimer?.invalidate()
+        typeTimer = Timer.scheduledTimer(withTimeInterval: 0.03, repeats: true) { timer in
+            if textIndex < fullText.count {
+                let charIndex = fullText.index(fullText.startIndex, offsetBy: textIndex)
+                typedText.append(fullText[charIndex])
+                textIndex += 1
             } else {
-                stopIntroBGM()
-                onFinished()
+                timer.invalidate()
+                isTyping = false
+                stopScrollSound()
             }
         }
     }
 
-    // MARK: - Audio
-    private func startIntroBGM() {
+    // MARK: - Next Scene Logic
+    private func nextScene() {
+        stopScrollSound()
+        typeTimer?.invalidate()
+
+        if currentScene < sceneTexts.count - 1 {
+            currentScene += 1
+            startScene(currentScene)
+        } else {
+            finish()
+        }
+    }
+
+    // MARK: - Skip
+    private func skipCinematic() {
+        stopScrollSound()
+        typeTimer?.invalidate()
+        finish()
+    }
+
+    private func finish() {
+        stopAllAudio()
+        onFinish()
+    }
+
+    // MARK: - Play Background Music
+    private func startMusic() {
         guard let url = Bundle.main.url(forResource: "witheringforesttheme", withExtension: "mp3") else {
-            print("❌ Couldn't find witheringforesttheme.mp3")
+            print("⚠️ witheringforesttheme.mp3 not found")
             return
         }
 
         do {
-            try AVAudioSession.sharedInstance().setCategory(.ambient)
-            try AVAudioSession.sharedInstance().setActive(true)
-
-            let p = try AVAudioPlayer(contentsOf: url)
-            p.numberOfLoops = -1
-            p.volume = 1.0
-            p.play()
-            bgmPlayer = p
+            bgmPlayer = try AVAudioPlayer(contentsOf: url)
+            bgmPlayer?.numberOfLoops = -1
+            bgmPlayer?.volume = 1.0
+            bgmPlayer?.play()
         } catch {
-            print("❌ WitheringForest BGM error:", error)
+            print("❌ Failed to play intro music:", error)
         }
     }
 
-    private func stopIntroBGM() {
-        bgmPlayer?.setVolume(0, fadeDuration: 0.25)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) {
-            bgmPlayer?.stop()
-            bgmPlayer = nil
+    // MARK: - Scroll Sound
+    private func playScrollSound() {
+        guard let url = Bundle.main.url(forResource: "textscroll", withExtension: "wav") else {
+            print("⚠️ textscroll.wav missing")
+            return
         }
-    }
-
-    private func startTypingSFX() {
-        guard let url = Bundle.main.url(forResource: "textscroll", withExtension: "mp3") else { return }
 
         do {
-            let p = try AVAudioPlayer(contentsOf: url)
-            p.numberOfLoops = -1
-            p.volume = 0.9
-            p.play()
-            typeSFX = p
+            scrollPlayer = try AVAudioPlayer(contentsOf: url)
+            scrollPlayer?.numberOfLoops = -1
+            scrollPlayer?.volume = 0.8
+            scrollPlayer?.play()
         } catch {
-            print("❌ Type SFX error:", error)
+            print("❌ Scroll sound error:", error)
         }
     }
 
-    private func stopTypingSFX() {
-        typeSFX?.stop()
-        typeSFX = nil
+    private func stopScrollSound() {
+        scrollPlayer?.stop()
+        scrollPlayer = nil
+    }
+
+    // MARK: - Global Audio Stop
+    private func stopAllAudio() {
+        bgmPlayer?.stop()
+        scrollPlayer?.stop()
     }
 }

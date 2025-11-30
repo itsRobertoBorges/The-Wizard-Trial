@@ -6,6 +6,7 @@ struct WorldSelectionView: View {
     let onSelectWorld: (WorldID) -> Void
 
     private let bgPortal = "portal"
+    @State private var showingIntro = false
     private let worlds: [WorldID] = [
         .witheringTree,
         .blackrockValley,
@@ -112,6 +113,14 @@ struct WorldSelectionView: View {
                                 value: floatUp
                             )
                     }
+                    .fullScreenCover(isPresented: $showingIntro) {
+                        WitheringForestIntroView {
+                            showingIntro = false
+                            onSelectWorld(.witheringTree)
+                        }
+                    }
+
+
                     .contentShape(Rectangle())
                     .gesture(
                         DragGesture(minimumDistance: 20)
@@ -126,7 +135,12 @@ struct WorldSelectionView: View {
 
                     // SELECT button
                     Button {
-                        onSelectWorld(worlds[index])
+                        if worlds[index] == .witheringTree {
+                            stopMusic()
+                            showingIntro = true
+                        } else {
+                            onSelectWorld(worlds[index])
+                        }
                     } label: {
                         Text("SELECT")
                             .font(.custom("PressStart2P-Regular", size: 14))

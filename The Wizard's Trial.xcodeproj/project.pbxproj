@@ -7,6 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		62247CE32ED5093D0024AB77 /* bohbantheme.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 62247CE22ED5093D0024AB77 /* bohbantheme.mp3 */; };
+		62247CE52ED531E20024AB77 /* SaveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62247CE42ED531E20024AB77 /* SaveManager.swift */; };
+		62247CED2ED6A19F0024AB77 /* witheringforest6.png in Resources */ = {isa = PBXBuildFile; fileRef = 62247CEB2ED6A19F0024AB77 /* witheringforest6.png */; };
+		62247CEE2ED6A19F0024AB77 /* witheringforest3.png in Resources */ = {isa = PBXBuildFile; fileRef = 62247CE82ED6A19F0024AB77 /* witheringforest3.png */; };
+		62247CEF2ED6A19F0024AB77 /* witheringforest5.png in Resources */ = {isa = PBXBuildFile; fileRef = 62247CEA2ED6A19F0024AB77 /* witheringforest5.png */; };
+		62247CF02ED6A19F0024AB77 /* witheringforest1.png in Resources */ = {isa = PBXBuildFile; fileRef = 62247CE62ED6A19F0024AB77 /* witheringforest1.png */; };
+		62247CF12ED6A19F0024AB77 /* witheringforest4.png in Resources */ = {isa = PBXBuildFile; fileRef = 62247CE92ED6A19F0024AB77 /* witheringforest4.png */; };
+		62247CF22ED6A19F0024AB77 /* witheringforesttheme.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 62247CEC2ED6A19F0024AB77 /* witheringforesttheme.mp3 */; };
+		62247CF32ED6A19F0024AB77 /* witheringforest2.png in Resources */ = {isa = PBXBuildFile; fileRef = 62247CE72ED6A19F0024AB77 /* witheringforest2.png */; };
+		62247CF52ED6A5070024AB77 /* WitheringForestIntroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62247CF42ED6A5070024AB77 /* WitheringForestIntroView.swift */; };
+		62247CF72ED8B4930024AB77 /* WitheringForestOutroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62247CF62ED8B4930024AB77 /* WitheringForestOutroView.swift */; };
+		62247CF92ED8E2EA0024AB77 /* witheringforestoutro.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 62247CF82ED8E2EA0024AB77 /* witheringforestoutro.mp3 */; };
 		624724492EC16E48007D13C0 /* click.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 6247243E2EC16E48007D13C0 /* click.mp3 */; };
 		6247244B2EC16E48007D13C0 /* stategame.png in Resources */ = {isa = PBXBuildFile; fileRef = 624724462EC16E48007D13C0 /* stategame.png */; };
 		6247244C2EC16E48007D13C0 /* bgm.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 6247243D2EC16E48007D13C0 /* bgm.mp3 */; };
@@ -44,6 +56,8 @@
 		6260F3112ED00D6600E70B6C /* fireball.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F3102ED00D6600E70B6C /* fireball.wav */; };
 		6260F3132ED12B6B00E70B6C /* iceblocksound.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F3122ED12B6B00E70B6C /* iceblocksound.wav */; };
 		6260F31B2ED2281C00E70B6C /* revivesoundeffect.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F31A2ED2281C00E70B6C /* revivesoundeffect.wav */; };
+		6260F31F2ED28A9800E70B6C /* BohbanNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6260F31E2ED28A9800E70B6C /* BohbanNode.swift */; };
+		6260F3232ED2CAB000E70B6C /* bobahnroar.wav in Resources */ = {isa = PBXBuildFile; fileRef = 6260F3222ED2CAB000E70B6C /* bobahnroar.wav */; };
 		626BBBFD2EC29D1100AF73C2 /* shopmusic.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 626BBBFC2EC29D1000AF73C2 /* shopmusic.mp3 */; };
 		626BBC032EC2A13F00AF73C2 /* shopimage.png in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC022EC2A13F00AF73C2 /* shopimage.png */; };
 		626BBC052EC2A25F00AF73C2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 626BBC042EC2A25F00AF73C2 /* Assets.xcassets */; };
@@ -76,6 +90,18 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		62247CE22ED5093D0024AB77 /* bohbantheme.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = bohbantheme.mp3; sourceTree = "<group>"; };
+		62247CE42ED531E20024AB77 /* SaveManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveManager.swift; sourceTree = "<group>"; };
+		62247CE62ED6A19F0024AB77 /* witheringforest1.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = witheringforest1.png; sourceTree = "<group>"; };
+		62247CE72ED6A19F0024AB77 /* witheringforest2.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = witheringforest2.png; sourceTree = "<group>"; };
+		62247CE82ED6A19F0024AB77 /* witheringforest3.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = witheringforest3.png; sourceTree = "<group>"; };
+		62247CE92ED6A19F0024AB77 /* witheringforest4.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = witheringforest4.png; sourceTree = "<group>"; };
+		62247CEA2ED6A19F0024AB77 /* witheringforest5.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = witheringforest5.png; sourceTree = "<group>"; };
+		62247CEB2ED6A19F0024AB77 /* witheringforest6.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = witheringforest6.png; sourceTree = "<group>"; };
+		62247CEC2ED6A19F0024AB77 /* witheringforesttheme.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = witheringforesttheme.mp3; sourceTree = "<group>"; };
+		62247CF42ED6A5070024AB77 /* WitheringForestIntroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WitheringForestIntroView.swift; sourceTree = "<group>"; };
+		62247CF62ED8B4930024AB77 /* WitheringForestOutroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WitheringForestOutroView.swift; sourceTree = "<group>"; };
+		62247CF82ED8E2EA0024AB77 /* witheringforestoutro.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = witheringforestoutro.mp3; sourceTree = "<group>"; };
 		623771B82EC0EF150033CA48 /* The Wizard's Trial.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "The Wizard's Trial.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6247243D2EC16E48007D13C0 /* bgm.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = bgm.mp3; sourceTree = "<group>"; };
 		6247243E2EC16E48007D13C0 /* click.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = click.mp3; sourceTree = "<group>"; };
@@ -114,6 +140,8 @@
 		6260F3102ED00D6600E70B6C /* fireball.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = fireball.wav; sourceTree = "<group>"; };
 		6260F3122ED12B6B00E70B6C /* iceblocksound.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = iceblocksound.wav; sourceTree = "<group>"; };
 		6260F31A2ED2281C00E70B6C /* revivesoundeffect.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = revivesoundeffect.wav; sourceTree = "<group>"; };
+		6260F31E2ED28A9800E70B6C /* BohbanNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BohbanNode.swift; sourceTree = "<group>"; };
+		6260F3222ED2CAB000E70B6C /* bobahnroar.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = bobahnroar.wav; sourceTree = "<group>"; };
 		626BBBFC2EC29D1000AF73C2 /* shopmusic.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = shopmusic.mp3; sourceTree = "<group>"; };
 		626BBC022EC2A13F00AF73C2 /* shopimage.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = shopimage.png; sourceTree = "<group>"; };
 		626BBC042EC2A25F00AF73C2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -175,11 +203,15 @@
 				626BBC2D2EC2DED500AF73C2 /* backbutton.png */,
 				626BBC272EC2D54400AF73C2 /* revive.png */,
 				626BBC332EC2EA0B00AF73C2 /* loadingshop.png */,
+				62247CEC2ED6A19F0024AB77 /* witheringforesttheme.mp3 */,
 				627019992EC57210003DF132 /* Adventure Map.mp3 */,
 				6260F2FA2ECBDC9E00E70B6C /* ShopItem.swift */,
 				6260F2F82ECBDC6B00E70B6C /* PlayerInventory.swift */,
 				626BBC132EC2C42400AF73C2 /* ShopView.swift */,
 				627019972EC54A3F003DF132 /* WorldSelectionView.swift */,
+				62247CF62ED8B4930024AB77 /* WitheringForestOutroView.swift */,
+				62247CF82ED8E2EA0024AB77 /* witheringforestoutro.mp3 */,
+				62247CF42ED6A5070024AB77 /* WitheringForestIntroView.swift */,
 				62C24A6F2EC3F81D00815F07 /* IntroView.swift */,
 				626BBC212EC2D00200AF73C2 /* blizzardspell.png */,
 				626BBC352EC2ED4200AF73C2 /* loadingsound.mp3 */,
@@ -192,22 +224,32 @@
 				6260F3122ED12B6B00E70B6C /* iceblocksound.wav */,
 				626BBC192EC2CB0C00AF73C2 /* manacrystal.png */,
 				6260F3102ED00D6600E70B6C /* fireball.wav */,
-				6247243F2EC16E48007D13C0 /* ContentView.swift */,
 				6260F3082ECECA3A00E70B6C /* lightningspell.wav */,
+				6247243F2EC16E48007D13C0 /* ContentView.swift */,
+				624724402EC16E48007D13C0 /* GameScene.swift */,
 				6260F2F42ECBCE6700E70B6C /* levelUp.wav */,
 				6260F2F02ECA400600E70B6C /* WoodlandDruidNode.swift */,
 				6260F3022ECEB2EA00E70B6C /* fairydust.wav */,
-				624724402EC16E48007D13C0 /* GameScene.swift */,
 				6260F31A2ED2281C00E70B6C /* revivesoundeffect.wav */,
+				62247CE22ED5093D0024AB77 /* bohbantheme.mp3 */,
 				6260F30E2ED0003A00E70B6C /* blizzard.wav */,
 				6260F3002ECE8D8700E70B6C /* manashield.wav */,
+				6260F31E2ED28A9800E70B6C /* BohbanNode.swift */,
 				624724442EC16E48007D13C0 /* RootView.swift */,
 				6260F2EC2EC9720C00E70B6C /* WoodlandElfNode.swift */,
 				627423BD2EC6B0B900D5630B /* WitheringForestScene.swift */,
 				626BBC2F2EC2E5C100AF73C2 /* AnimatedGIFView.swift */,
 				6260F2EA2EC963C700E70B6C /* explosion.wav */,
+				62247CE42ED531E20024AB77 /* SaveManager.swift */,
 				626BBC062EC2AC2A00AF73C2 /* TypewriterText.swift */,
+				6260F3222ED2CAB000E70B6C /* bobahnroar.wav */,
 				626BBC042EC2A25F00AF73C2 /* Assets.xcassets */,
+				62247CE62ED6A19F0024AB77 /* witheringforest1.png */,
+				62247CE72ED6A19F0024AB77 /* witheringforest2.png */,
+				62247CE82ED6A19F0024AB77 /* witheringforest3.png */,
+				62247CE92ED6A19F0024AB77 /* witheringforest4.png */,
+				62247CEA2ED6A19F0024AB77 /* witheringforest5.png */,
+				62247CEB2ED6A19F0024AB77 /* witheringforest6.png */,
 				6260F3062ECEC94F00E70B6C /* lightningshieldeffect 2.png */,
 				627423C12EC84D4A00D5630B /* Battle.mp3 */,
 				626BBC022EC2A13F00AF73C2 /* shopimage.png */,
@@ -319,6 +361,13 @@
 				626BBC1C2EC2CC0700AF73C2 /* manashield.png in Resources */,
 				626BBC2A2EC2D74600AF73C2 /* rapidwand.png in Resources */,
 				626BBC202EC2CEB100AF73C2 /* lightningshield.png in Resources */,
+				62247CED2ED6A19F0024AB77 /* witheringforest6.png in Resources */,
+				62247CEE2ED6A19F0024AB77 /* witheringforest3.png in Resources */,
+				62247CEF2ED6A19F0024AB77 /* witheringforest5.png in Resources */,
+				62247CF02ED6A19F0024AB77 /* witheringforest1.png in Resources */,
+				62247CF12ED6A19F0024AB77 /* witheringforest4.png in Resources */,
+				62247CF22ED6A19F0024AB77 /* witheringforesttheme.mp3 in Resources */,
+				62247CF32ED6A19F0024AB77 /* witheringforest2.png in Resources */,
 				626BBC2E2EC2DED500AF73C2 /* backbutton.png in Resources */,
 				626BBC282EC2D54400AF73C2 /* revive.png in Resources */,
 				6260F3012ECE8D8700E70B6C /* manashield.wav in Resources */,
@@ -328,10 +377,12 @@
 				626BBC262EC2D30400AF73C2 /* iceblock.png in Resources */,
 				6260F2FF2ECE8B1B00E70B6C /* powerUp.wav in Resources */,
 				624724612EC1B340007D13C0 /* background.png in Resources */,
+				6260F3232ED2CAB000E70B6C /* bobahnroar.wav in Resources */,
 				6260F30D2ECFE0E200E70B6C /* rapidwand.wav in Resources */,
 				624724592EC17C16007D13C0 /* loadscreentext.png in Resources */,
 				626BBC342EC2EA0B00AF73C2 /* loadingshop.png in Resources */,
 				624724572EC17897007D13C0 /* loadingscreen.png in Resources */,
+				62247CE32ED5093D0024AB77 /* bohbantheme.mp3 in Resources */,
 				6247244B2EC16E48007D13C0 /* stategame.png in Resources */,
 				6247244C2EC16E48007D13C0 /* bgm.mp3 in Resources */,
 				6247245D2EC1A13A007D13C0 /* firewizard.png in Resources */,
@@ -343,6 +394,7 @@
 				626BBC362EC2ED4200AF73C2 /* loadingsound.mp3 in Resources */,
 				6247244F2EC16E48007D13C0 /* shop.png in Resources */,
 				6260F2F52ECBCE6700E70B6C /* levelUp.wav in Resources */,
+				62247CF92ED8E2EA0024AB77 /* witheringforestoutro.mp3 in Resources */,
 				6270199A2EC57210003DF132 /* Adventure Map.mp3 in Resources */,
 				6260F2EB2EC963C700E70B6C /* explosion.wav in Resources */,
 				626BBC222EC2D00200AF73C2 /* blizzardspell.png in Resources */,
@@ -359,6 +411,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				62247CF52ED6A5070024AB77 /* WitheringForestIntroView.swift in Sources */,
+				62247CF72ED8B4930024AB77 /* WitheringForestOutroView.swift in Sources */,
 				627019982EC54A3F003DF132 /* WorldSelectionView.swift in Sources */,
 				6260F2E92EC937DB00E70B6C /* EntNode.swift in Sources */,
 				627423BE2EC6B0B900D5630B /* WitheringForestScene.swift in Sources */,
@@ -370,8 +424,10 @@
 				6260F2F12ECA400F00E70B6C /* WoodlandDruidNode.swift in Sources */,
 				624724532EC16E48007D13C0 /* GameScene.swift in Sources */,
 				626BBC0E2EC2B4BE00AF73C2 /* Font+Theme.swift in Sources */,
+				6260F31F2ED28A9800E70B6C /* BohbanNode.swift in Sources */,
 				6260F2F92ECBDC6B00E70B6C /* PlayerInventory.swift in Sources */,
 				626BBC302EC2E5CD00AF73C2 /* AnimatedGIFView.swift in Sources */,
+				62247CE52ED531E20024AB77 /* SaveManager.swift in Sources */,
 				624724542EC16E48007D13C0 /* Veggie_DodgerApp.swift in Sources */,
 				6260F2FB2ECBDC9E00E70B6C /* ShopItem.swift in Sources */,
 				624724552EC16E48007D13C0 /* RootView.swift in Sources */,
@@ -516,11 +572,11 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "The-Wizard-s-Trial-Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.adventure-games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -552,11 +608,11 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "The-Wizard-s-Trial-Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.adventure-games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

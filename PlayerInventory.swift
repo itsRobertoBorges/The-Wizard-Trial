@@ -2,127 +2,136 @@
 //  PlayerInventory.swift
 //  The Wizard's Trial
 //
-//  Created by Roberto on 2025-11-17.
-//
 
 import Foundation
 import Combine
 
 final class PlayerInventory: ObservableObject {
+
     static let shared = PlayerInventory()
 
-    // Permanent coins
+    private let defaults = UserDefaults.standard
+    private let coinsKey = "playerCoins"
+    private let slotsKey = "playerSlots"
+    private let quickSlotsKey = "playerQuickSlots"
+
+    // MARK: - Published
+
     @Published private(set) var coins: Int {
-        didSet {
-            // You can persist coins here later if you want
-        }
+        didSet { defaults.set(coins, forKey: coinsKey) }
     }
 
-    // 16 inventory slots
-    @Published var slots: [ShopItem?]
+    @Published var slots: [ShopItem?] {
+        didSet { saveInventory() }
+    }
 
-    // 3 quick slots
-    @Published var quickSlots: [ShopItem?]
+    @Published var quickSlots: [ShopItem?] {
+        didSet { saveQuickSlots() }
+    }
+
+    // MARK: Init
 
     init() {
-        self.coins = 0
-        self.slots = Array(repeating: nil, count: 16)
-        self.quickSlots = Array(repeating: nil, count: 3)
+        self.coins = defaults.integer(forKey: coinsKey)
+
+        // Load inventory slots
+        if let arr = defaults.array(forKey: slotsKey) as? [String] {
+            self.slots = arr.map { str in
+                if str == "null" { return nil }
+                if let data = Data(base64Encoded: str) {
+                    return try? JSONDecoder().decode(ShopItem.self, from: data)
+                }
+                return nil
+            }
+        } else {
+            self.slots = Array(repeating: nil, count: 16)
+        }
+
+        // Load quick slots
+        if let arr = defaults.array(forKey: quickSlotsKey) as? [String] {
+            self.quickSlots = arr.map { str in
+                if str == "null" { return nil }
+                if let data = Data(base64Encoded: str) {
+                    return try? JSONDecoder().decode(ShopItem.self, from: data)
+                }
+                return nil
+            }
+        } else {
+            self.quickSlots = Array(repeating: nil, count: 3)
+        }
     }
 
-    // MARK: - Coins
+    // MARK: Saving
 
-    func addCoins(_ amount: Int) {
-        coins += amount
+    private func saveInventory() {
+        let encoded = slots.map { item -> String in
+            if let item = item,
+               let data = try? JSONEncoder().encode(item) {
+                return data.base64EncodedString()
+            }
+            return "null"
+        }
+        defaults.set(encoded, forKey: slotsKey)
     }
-    
-    // MARK: - Shop / buying logic
 
-    /// Attempts to buy an item:
-    /// - returns true if purchase succeeded (coins deducted + item added)
-    /// - returns false if not enough coins or no free inventory slot.
+    private func saveQuickSlots() {
+        let encoded = quickSlots.map { item -> String in
+            if let item = item,
+               let data = try? JSONEncoder().encode(item) {
+                return data.base64EncodedString()
+            }
+            return "null"
+        }
+        defaults.set(encoded, forKey: quickSlotsKey)
+    }
+
+    // MARK: Coins
+
+    func addCoins(_ amount: Int) { coins += amount }
+
+    // MARK: Buy
+
     func tryBuy(_ item: ShopItem) -> Bool {
-        // Not enough coins
-        guard coins >= item.price else {
-            return false
-        }
+        guard coins >= item.price else { return false }
+        guard let index = slots.firstIndex(where: { $0 == nil }) else { return false }
 
-        // Find an empty inventory slot
-        guard let emptyIndex = slots.firstIndex(where: { $0 == nil }) else {
-            // No space in inventory
-            return false
-        }
-
-        // Perform purchase
         coins -= item.price
-        slots[emptyIndex] = item
+        slots[index] = item
         return true
     }
 
+    // MARK: Remove ONE item
 
-    // MARK: - Inventory add/remove
-
-    func add(_ item: ShopItem) -> Bool {
-        if let index = slots.firstIndex(where: { $0 == nil }) {
-            slots[index] = item
-            return true
-        }
-        return false
-    }
-
-    func destroy(_ item: ShopItem) {
-        // Remove ALL copies (used by consume, if you still want that behavior)
-        for i in slots.indices {
-            if slots[i]?.id == item.id {
-                slots[i] = nil
-            }
-        }
-
-        for i in quickSlots.indices {
-            if quickSlots[i]?.id == item.id {
-                quickSlots[i] = nil
-            }
-        }
-    }
-
-    func consume(_ item: ShopItem) {
-        destroy(item)
-    }
-
-    // MARK: - NEW: destroy ONE copy from inventory grid
-
-    func destroyOneInInventory(_ item: ShopItem) {
+    func destroyOne(_ item: ShopItem) {
         if let index = slots.firstIndex(where: { $0?.id == item.id }) {
             slots[index] = nil
+            return
+        }
+        if let index = quickSlots.firstIndex(where: { $0?.id == item.id }) {
+            quickSlots[index] = nil
+            return
         }
     }
 
-    // MARK: - Quick slots
+    // MARK: Equip
 
     func equip(_ item: ShopItem, to slotIndex: Int) {
         guard quickSlots.indices.contains(slotIndex) else { return }
 
-        // Find the item in inventory slots
-        guard let invIndex = slots.firstIndex(where: { $0?.id == item.id }) else {
+        if let invIndex = slots.firstIndex(where: { $0?.id == item.id }) {
+            let previous = quickSlots[slotIndex]
             quickSlots[slotIndex] = item
+            slots[invIndex] = previous
             return
         }
 
-        // Swap with what was in the quick slot
-        let previousQuickItem = quickSlots[slotIndex]
         quickSlots[slotIndex] = item
-        slots[invIndex] = previousQuickItem
     }
 
-    // MARK: - NEW: swap inventory slots (drag & drop)
+    // MARK: Swap
 
     func swapSlots(_ a: Int, _ b: Int) {
-        guard slots.indices.contains(a),
-              slots.indices.contains(b),
-              a != b else { return }
-
-        let temp = slots[a]
-        slots[a] = slots[b]
-        slots[b] = temp
+        guard slots.indices.contains(a), slots.indices.contains(b), a != b else { return }
+        slots.swapAt(a, b)
     }
 }

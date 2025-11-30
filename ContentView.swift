@@ -78,6 +78,13 @@ struct ContentView: View {
     
     // Spell cooldown tick
     private let cooldownTick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    
+    //show witheringforestoutro
+
+    @State private var showOutro = false
+
+    
+    
 
 
 
@@ -96,120 +103,129 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { geo in
-            ZStack {
-                // ===== SpriteKit Scene =====
-                SpriteView(scene: scene)
-                    .ignoresSafeArea()
-
-                // ===== Pause (top-left) =====
-                topLeftPauseButton
-
-                // ===== Level Bar (top-center) =====
-                topCenterLevelBar
-
-                // ===== HP / Mana (left-center) =====
-                leftCenterStatusBars
-
-                // ===== Controls (bottom) =====
-                bottomControls(geo: geo)
-
-                // ===== Level Up Banner =====
-                if showLevelUpBanner {
-                    LevelUpBannerView(level: level)
+            if(showOutro) {
+                WitheringForestOutroView {
+                    onExitToMenu()
                 }
-
-                // ===== Pause / Inventory Overlay =====
-                if showPauseOverlay {
-                    PauseOverlay(
-                        coinsThisRun: coinsThisRun,
-                        inventory: inventory,
-                        isMuted: isMuted,
-                        onClose: { closePauseOverlay() },
-                        onMainMenu: {
-                            bankCoinsIfNeededAndExitToMenu()
-                            scene.stopSceneCompletely()
-                            onExitToMenu()
-                        },
-                        onToggleMute: {
-                            isMuted.toggle()
-                            scene.setMuted(isMuted)
-                        },
-                        onSelectSlotItem: { item in
-                            selectedItem = item
-                            showingItemMenu = true
-                        }
-                    )
+            } else {
+                ZStack {
+                    // ===== SpriteKit Scene =====
+                    SpriteView(scene: scene)
+                        .ignoresSafeArea()
+                    
+                    // ===== Pause (top-left) =====
+                    topLeftPauseButton
+                    
+                    // ===== Level Bar (top-center) =====
+                    topCenterLevelBar
+                    
+                    // ===== HP / Mana (left-center) =====
+                    leftCenterStatusBars
+                    
+                    // ===== Controls (bottom) =====
+                    bottomControls(geo: geo)
+                    
+                    // ===== Level Up Banner =====
+                    if showLevelUpBanner {
+                        LevelUpBannerView(level: level)
+                    }
+                    
+                    // ===== Pause / Inventory Overlay =====
+                    if showPauseOverlay {
+                        PauseOverlay(
+                            coinsThisRun: coinsThisRun,
+                            inventory: inventory,
+                            isMuted: isMuted,
+                            onClose: { closePauseOverlay() },
+                            onMainMenu: {
+                                bankCoinsIfNeededAndExitToMenu()
+                                scene.stopSceneCompletely()
+                                onExitToMenu()
+                            },
+                            onToggleMute: {
+                                isMuted.toggle()
+                                scene.setMuted(isMuted)
+                            },
+                            onSelectSlotItem: { item in
+                                selectedItem = item
+                                showingItemMenu = true
+                            }
+                        )
+                    }
+                    
+                    // ===== Equip Slot Chooser =====
+                    if choosingEquipSlot, let item = selectedItem {
+                        EquipSlotOverlay(
+                            item: item,
+                            onEquip: { slotIndex in
+                                inventory.equip(item, to: slotIndex)
+                                choosingEquipSlot = false
+                                selectedItem = nil
+                            },
+                            onCancel: {
+                                choosingEquipSlot = false
+                                selectedItem = nil
+                            }
+                        )
+                    }
+                    
+                    // ===== Item Use / Equip / Destroy Menu =====
+                    if showingItemMenu, let item = selectedItem {
+                        ItemActionMenuOverlay(
+                            item: item,
+                            onUse: {
+                                handleUse(item: item)
+                                showingItemMenu = false
+                                selectedItem = nil
+                            },
+                            onEquip: {
+                                showingItemMenu = false
+                                choosingEquipSlot = true
+                            },
+                            onDestroy: {
+                                PlayerInventory.shared.destroyOne(item)
+                                showingItemMenu = false
+                                selectedItem = nil
+                            },
+                            onClose: {
+                                showingItemMenu = false
+                                selectedItem = nil
+                            }
+                        )
+                    }
+                    
+                    // ===== Death Popup =====
+                    if showDeathPopup {
+                        DeathPopupOverlay(
+                            coinsThisRun: coinsThisRun,
+                            xpThisRun: xpThisRun,
+                            entKills: entKills,
+                            elfKills: elfKills,
+                            druidKills: druidKills,
+                            onMainMenu: {
+                                bankCoinsIfNeeded()
+                                onExitToMenu()
+                            },
+                            onTryAgain: {
+                                bankCoinsIfNeeded()
+                                resetRunState()
+                                scene.fullReset()
+                                scene.begin()
+                            },
+                            onRevive: {
+                                revivePlayer()
+                            },
+                            canRevive: hasReviveItem
+                        )
+                    }
+                    
+                    
                 }
-
-                // ===== Equip Slot Chooser =====
-                if choosingEquipSlot, let item = selectedItem {
-                    EquipSlotOverlay(
-                        item: item,
-                        onEquip: { slotIndex in
-                            inventory.equip(item, to: slotIndex)
-                            choosingEquipSlot = false
-                            selectedItem = nil
-                        },
-                        onCancel: {
-                            choosingEquipSlot = false
-                            selectedItem = nil
-                        }
-                    )
-                }
-
-                // ===== Item Use / Equip / Destroy Menu =====
-                if showingItemMenu, let item = selectedItem {
-                    ItemActionMenuOverlay(
-                        item: item,
-                        onUse: {
-                            handleUse(item: item)
-                            showingItemMenu = false
-                            selectedItem = nil
-                        },
-                        onEquip: {
-                            showingItemMenu = false
-                            choosingEquipSlot = true
-                        },
-                        onDestroy: {
-                            inventory.destroyOneInInventory(item)
-                            showingItemMenu = false
-                            selectedItem = nil
-                        },
-                        onClose: {
-                            showingItemMenu = false
-                            selectedItem = nil
-                        }
-                    )
-                }
-
-                // ===== Death Popup =====
-                if showDeathPopup {
-                    DeathPopupOverlay(
-                        coinsThisRun: coinsThisRun,
-                        xpThisRun: xpThisRun,
-                        entKills: entKills,
-                        elfKills: elfKills,
-                        druidKills: druidKills,
-                        onMainMenu: {
-                            bankCoinsIfNeeded()
-                            onExitToMenu()
-                        },
-                        onTryAgain: {
-                            bankCoinsIfNeeded()
-                            resetRunState()
-                            scene.fullReset()
-                            scene.begin()
-                        },
-                        onRevive: {
-                            revivePlayer()
-                        },
-                        canRevive: hasReviveItem
-                    )
-                }
-                
-                
             }
         }
+        
+        
+
         // ===== GameScene event wiring =====
         .onReceive(scene.manaSpendPublisher) { amount in
             if mana >= amount {
@@ -220,7 +236,12 @@ struct ContentView: View {
         .onReceive(cooldownTick) { _ in
             reduceCooldowns()
         }
-
+        
+        // Withering Forest Outro
+        .onReceive(scene.bossDefeatedPublisher) { _ in
+            showOutro = true
+            scene.stopSceneCompletely()
+        }
         
         .onReceive(scene.damagePublisher) { dmg in
             guard !showDeathPopup else { return }
@@ -371,6 +392,7 @@ struct ContentView: View {
         }
 
     }
+        
     
     
     
@@ -519,11 +541,11 @@ struct ContentView: View {
         switch item.imageName {
         case "healthpotion":
             useHealthPotion()
-            inventory.consume(item)
+            PlayerInventory.shared.destroyOne(item)
         
         case "manacrystal":
             useManaCrystal()
-            inventory.consume(item)
+            PlayerInventory.shared.destroyOne(item)
 
         case "manashield":
             guard trySpendMana(30) else { return }
@@ -533,8 +555,8 @@ struct ContentView: View {
             
         case "fairydust":
             useFairyDust()
-            inventory.consume(item)
-        
+            PlayerInventory.shared.destroyOne(item)
+
         case "lightningshield":
             guard trySpendMana(40) else { return }
             guard isSpellReady("lightningshield") else { return }

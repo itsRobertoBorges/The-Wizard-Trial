@@ -11,6 +11,7 @@ import SpriteKit
 final class WitheringForestScene: SKScene {
 
     private let player = SKSpriteNode(imageNamed: "wizard")
+    
 
     override func didMove(to view: SKView) {
         backgroundColor = .black
@@ -34,4 +35,5 @@ final class WitheringForestScene: SKScene {
         // reuse your joystick logic
         // move player, handle projectiles, etc.
     }
+    
 }

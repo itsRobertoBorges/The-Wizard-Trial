@@ -1,3 +1,11 @@
+//
+//  WitheringForestOutroView.swift
+//  The Wizard's Trial
+//
+//  Created by Roberto on 2025-11-27.
+//
+
+
 import SwiftUI
 import AVFoundation
 
@@ -27,7 +35,6 @@ struct WitheringForestOutroView: View {
         "He approaches the Apprentice.\nThe air hums with divine weight.\nThe forest itself bows in his presence.",
         "A hand rests on the Apprentice’s shoulder.\nNo words are needed.\nThe message is clear:\nA greater war lies ahead.",
         "The Apprentice tightens his grip on his staff.\nHe turns toward the path of light—\nready to face the next world.",
-        "The ancient door glows once more.\nNo longer corrupted.\nNo longer sealed.\nOnly waiting… for the journey to continue."
     ]
 
     // MARK: - Typewriter State
@@ -149,7 +156,7 @@ struct WitheringForestOutroView: View {
 
     // MARK: - Music
     private func startMusic() {
-        guard let url = Bundle.main.url(forResource: "witheringforesttheme", withExtension: "mp3") else {
+        guard let url = Bundle.main.url(forResource: "witheringforestoutro", withExtension: "mp3") else {
             print("⚠️ Missing witheringforesttheme.mp3")
             return
         }

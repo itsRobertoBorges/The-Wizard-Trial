@@ -311,6 +311,7 @@ private struct ItemDetailView: View {
                 Button(action: { onBuy(item) }) {
                     Text(item.price <= currentCoins ? "BUY" : "CAN'T AFFORD")
                         .font(.custom("PressStart2P-Regular", size: 12))
+                        .foregroundColor(.red)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                 }
