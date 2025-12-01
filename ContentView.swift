@@ -94,10 +94,12 @@ struct ContentView: View {
         self.world = world
         self.onExitToMenu = onExitToMenu
 
-        let s = GameScene(size: UIScreen.main.bounds.size)
+        // 🔥 Pass the world into GameScene
+        let s = GameScene(size: UIScreen.main.bounds.size, world: world)
         s.scaleMode = .resizeFill
         self.scene = s
     }
+
 
     // MARK: - Body
 

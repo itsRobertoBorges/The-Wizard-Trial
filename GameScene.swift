@@ -20,6 +20,19 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     
     // Player inventory
     private var inventory: [String: Int] = [:]
+    
+
+    let world: WorldID
+    
+    init(size: CGSize, world: WorldID = .witheringTree) {
+        self.world = world
+        super.init(size: size)
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
 
     
     // --------------------------------------------------------
@@ -430,10 +443,16 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         guard !hasStarted, !isGameOver else { return }
         hasStarted = true
         startedSubject.send(())
-        startScoringAndSpawns()
-        
+
+        if world == .witheringTree {
+            // Normal survival mode
+            startScoringAndSpawns()
+        } else {
+            // For Blackrock Valley (and future worlds), just play music, no spawns
+            bgmPlayer?.play()
+        }
     }
- 
+
     
     func showOrbExplosion(at p: CGPoint) {
         let explosion = SKEmitterNode()
@@ -1248,14 +1267,17 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         wizardNode.zPosition = 210
         fingerNode.zPosition = 200
 
-        // Score (coins over time)
-        coinAccumulator += dt
-        while coinAccumulator >= 1 {
-            coinAccumulator -= 1
-            coins += 1
-            coinsSubject.send(coins)
-            SaveManager.shared.saveCoins(coins)
+        // Score (coins over time) – only in Withering Forest for now
+        if world == .witheringTree {
+            coinAccumulator += dt
+            while coinAccumulator >= 1 {
+                coinAccumulator -= 1
+                coins += 1
+                coinsSubject.send(coins)
+                SaveManager.shared.saveCoins(coins)
+            }
         }
+
 
         cleanupOffscreen()
         ents.removeAll { $0.parent == nil }
@@ -2220,13 +2242,27 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private func buildBackgroundIfNeeded() {
         guard arenaBackground == nil else { return }
-        let bg = SKSpriteNode(imageNamed: "witheringforest")
+
+        let textureName: String
+        switch world {
+        case .witheringTree:
+            textureName = "witheringforest"
+        case .blackrockValley:
+            textureName = "blackrockvalleymap"
+        default:
+            // fallback so other worlds still show *something* for now
+            textureName = "witheringforest"
+        }
+
+        let bg = SKSpriteNode(imageNamed: textureName)
         bg.zPosition = -100
         bg.anchorPoint = CGPoint(x: 0.5, y: 0.5)
         bg.texture?.filteringMode = .nearest
         addChild(bg)
         arenaBackground = bg
     }
+
+
 
     private func layoutBackground() {
         guard let bg = arenaBackground, let tex = bg.texture else { return }
@@ -2239,21 +2275,37 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func configureMusic() {
+        // Configure audio session
         do {
             try AVAudioSession.sharedInstance().setCategory(.ambient)
             try AVAudioSession.sharedInstance().setActive(true)
-        } catch {}
+        } catch {
+            print("Audio session error:", error)
+        }
 
-        guard let url = Bundle.main.url(forResource: "Battle", withExtension: "mp3") else { return }
+        // Pick track based on world
+        let resourceName: String
+        switch world {
+        case .blackrockValley:
+            resourceName = "blackrockvalleytheme"   // <- your new track (no .mp3 here)
+        default:
+            resourceName = "Battle"                 // <- existing battle theme
+        }
+
+        guard let url = Bundle.main.url(forResource: resourceName, withExtension: "mp3") else {
+            print("Could not find BGM resource:", resourceName)
+            return
+        }
 
         do {
             let p = try AVAudioPlayer(contentsOf: url)
-            p.numberOfLoops = -1
-            p.volume = 1.0
+            p.numberOfLoops = -1        // loop forever
+            p.volume = 1.0              // adjust if it's too loud/quiet
             p.prepareToPlay()
             bgmPlayer = p
         } catch {
             print("Audio error:", error)
         }
     }
+
 }
