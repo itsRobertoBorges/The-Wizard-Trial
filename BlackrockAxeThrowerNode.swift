@@ -1,3 +1,11 @@
+//
+//  BlackrockAxeThrowerNode.swift
+//  The Wizard's Trial
+//
+//  Created by Roberto on 2025-12-02.
+//
+
+
 import SpriteKit
 
 final class BlackrockAxeThrowerNode: SKSpriteNode {
@@ -41,30 +49,29 @@ final class BlackrockAxeThrowerNode: SKSpriteNode {
         self.direction = direction
         self.targetX   = targetX
 
+        // Full spritesheet texture (1 row, 6 columns)
         let sheet = SKTexture(imageNamed: "blackrockvalleyaxethrower")
         sheet.filteringMode = .nearest
 
-        // ASSUMPTION: 1 row, 7 columns. If your sheet is 6 frames, set cols = 6.
-        let rows = 1
-        let cols = 7
-        let frameWidth  = 1.0 / CGFloat(cols)
-        let frameHeight = 1.0 / CGFloat(rows)
+        let cols = 3  
+        let frameWidth = 1.0 / CGFloat(cols)
+        let frameHeight: CGFloat = 1.0   // single row
 
         var frames: [SKTexture] = []
         for col in 0..<cols {
-            let rect = CGRect(
-                x: CGFloat(col) * frameWidth,
-                y: 0.0,
-                width: frameWidth,
-                height: frameHeight
-            )
+            let x = CGFloat(col) * frameWidth
+            let rect = CGRect(x: x,
+                              y: 0.0,
+                              width: frameWidth,
+                              height: frameHeight)
             let tex = SKTexture(rect: rect, in: sheet)
             tex.filteringMode = .nearest
             frames.append(tex)
         }
+
         self.allFrames = frames
 
-        // Use first 4 frames for walk, last frame as throw pose
+        // First 4 frames = walk, last frame = throw pose
         if frames.count >= 5 {
             self.walkFrames = Array(frames[0..<4])
             self.throwPose  = frames.last
@@ -79,7 +86,7 @@ final class BlackrockAxeThrowerNode: SKSpriteNode {
         name = "blackrockAxeThrower"
         zPosition = 20
 
-        // Scale to targetDiameter
+        // Scale to match elf size
         let baseSize = max(startTexture.size().width, startTexture.size().height)
         let scale = targetDiameter / baseSize
         setScale(scale)
@@ -94,6 +101,7 @@ final class BlackrockAxeThrowerNode: SKSpriteNode {
         setupPhysics()
         startWalking()
     }
+
 
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
