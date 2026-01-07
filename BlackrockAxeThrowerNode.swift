@@ -204,19 +204,26 @@ final class BlackrockAxeThrowerNode: SKSpriteNode {
     private func spawnBoomerang(toward target: CGPoint) {
         guard let scene = self.scene else { return }
 
-        let axeRadius: CGFloat = 14
-        let axe = SKShapeNode(circleOfRadius: axeRadius)
+        // Match the old grey ball size (radius 14 => diameter 28)
+        let axeRadius: CGFloat = 30
+        let targetDiameter: CGFloat = axeRadius * 4
+
+        // Axe sprite
+        let axeTexture = SKTexture(imageNamed: "axesprite")
+        axeTexture.filteringMode = .nearest
+
+        let axe = SKSpriteNode(texture: axeTexture)
         axe.name = "blackrockAxe"
-        axe.fillColor = .darkGray
-        axe.strokeColor = .white
-        axe.lineWidth = 2
-        axe.glowWidth = 4
         axe.zPosition = 30
 
         let origin = CGPoint(x: position.x, y: position.y + 4)
         axe.position = origin
 
-        // Physics for hit detection (reuse elfArrow category)
+        // Scale sprite so its largest dimension matches the old projectile diameter
+        let scale = targetDiameter / max(axe.size.width, axe.size.height)
+        axe.setScale(scale)
+
+        // Physics: keep identical hitbox behavior to the old grey ball
         let body = SKPhysicsBody(circleOfRadius: axeRadius)
         body.isDynamic = true
         body.affectedByGravity = false
@@ -236,12 +243,15 @@ final class BlackrockAxeThrowerNode: SKSpriteNode {
         let back = SKAction.move(to: origin, duration: backDuration)
         let remove = SKAction.removeFromParent()
 
-        // Optional spin for style
-        let spin = SKAction.rotate(byAngle: .pi * 2, duration: outDuration + backDuration)
-        axe.run(.repeatForever(spin))
+        // Rotation (boomerang spin)
+        let spin = SKAction.rotate(byAngle: .pi * 2, duration: 0.15)
+        let spinForever = SKAction.repeatForever(spin)
 
-        axe.run(.sequence([out, back, remove]))
+        // Run movement and rotation together
+        let path = SKAction.sequence([out, back, remove])
+        axe.run(.group([path, spinForever]))
     }
+
 
     // MARK: - Damage / death
 
