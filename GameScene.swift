@@ -1645,7 +1645,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         body.affectedByGravity = false
         body.categoryBitMask = Cat.missile
         body.collisionBitMask = 0
-        body.contactTestBitMask = Cat.ent | Cat.elf | Cat.druid
+        body.contactTestBitMask = Cat.ent | Cat.elf | Cat.druid | Cat.spearman
         body.linearDamping = 0
         fb.physicsBody = body
 
@@ -1959,7 +1959,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                cat == Cat.elfArrow ||
                cat == Cat.druid ||
                cat == Cat.druidOrb ||
-               cat == Cat.shamanrock
+               cat == Cat.shamanrock 
+
             {
 
                 if node.position.x < -pad ||
@@ -2149,7 +2150,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
             if let spear = enemyBody.node as? BlackrockSpearmanNode {
                 let died = spear.takeDamage(10)
-                if died { awardXP(20); elfKillSubject.send(1) } // or make a spearmanKill publisher later
+                if died { awardXP(40); elfKillSubject.send(1) } // or make a spearmanKill publisher later
             }
 
             missileBody.node?.removeFromParent()
@@ -2319,8 +2320,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             Cat.shamanrock |
             Cat.elf |
             Cat.druid |
-            Cat.shaman
-
+            Cat.shaman |
+            Cat.spearman
+        
         fingerNode.physicsBody = body
         fingerNode.zPosition = 40
         addChild(fingerNode)

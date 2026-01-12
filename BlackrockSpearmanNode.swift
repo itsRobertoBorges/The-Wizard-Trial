@@ -88,9 +88,9 @@ final class BlackrockSpearmanNode: SKSpriteNode {
         let scale = desiredDiameter / max(base, 1)
         setScale(scale)
 
-
         startWalkAnimation()
         startMovingDown(sceneHeight: sceneHeight)
+        configurePhysics()
     }
 
     required init?(coder: NSCoder) {
