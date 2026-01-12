@@ -61,7 +61,7 @@ struct RootView: View {
             case .loading:
                 LoadingScreenView(
                     duration: 4.0,
-                    mode: .classic(bg: "loadingscreen", text: "loadingscreentext")
+                    mode: .classic(bg: "witheringforest4", text: "loadingscreentext")
                 ) {
                     withAnimation(.easeInOut(duration: 0.35)) { fadeOut = true }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {

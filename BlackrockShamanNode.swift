@@ -33,7 +33,7 @@ final class BlackrockShamanNode: SKSpriteNode {
     private var timeSinceLastCast: TimeInterval = 0
     private let castInterval: TimeInterval = 5.0
 
-    // Animation frames (1 row, 2 cols)
+    // Animation frames (idle/cast)
     private var idleTexture: SKTexture
     private var castTexture: SKTexture
 
@@ -42,20 +42,10 @@ final class BlackrockShamanNode: SKSpriteNode {
     init(targetDiameter: CGFloat, startCenter: CGPoint) {
         self.hoverCenter = startCenter
 
-        // Spritesheet named exactly "BlackrockShaman"
-        let sheet = SKTexture(imageNamed: "BlackrockShaman")
-        sheet.filteringMode = .nearest
+        // Textures named exactly "orcshaman" and "orcshaman_cast"
+        let idleTex = SKTexture(imageNamed: "orcshaman")
+        let castTex = SKTexture(imageNamed: "orcshaman_cast")
 
-        let rows = 1
-        let cols = 2
-        let frameWidth  = 1.0 / CGFloat(cols)
-        let frameHeight = 1.0 / CGFloat(rows)
-
-        let idleRect = CGRect(x: 0 * frameWidth, y: 0, width: frameWidth, height: frameHeight)
-        let castRect = CGRect(x: 1 * frameWidth, y: 0, width: frameWidth, height: frameHeight)
-
-        let idleTex = SKTexture(rect: idleRect, in: sheet)
-        let castTex = SKTexture(rect: castRect, in: sheet)
         idleTex.filteringMode = .nearest
         castTex.filteringMode = .nearest
 
@@ -64,12 +54,12 @@ final class BlackrockShamanNode: SKSpriteNode {
 
         super.init(texture: idleTex, color: .clear, size: idleTex.size())
 
-        name = "blackrockShaman"
+        name = "orcshaman"
         zPosition = 8
 
-        // Scale to requested size
+        // Scale to requested size (slightly bigger so he reads as a higher-tier enemy)
         let baseSize = max(idleTex.size().width, idleTex.size().height)
-        let scale = targetDiameter / baseSize
+        let scale = (targetDiameter / baseSize) * 1.15
         setScale(scale)
 
         position = startCenter
@@ -91,7 +81,6 @@ final class BlackrockShamanNode: SKSpriteNode {
         body.affectedByGravity = false
         body.allowsRotation = false
 
-        // TODO: Update these to match your project’s categories
         body.categoryBitMask = Cat.shaman
         body.collisionBitMask = 0
         body.contactTestBitMask = Cat.missile
@@ -118,14 +107,14 @@ final class BlackrockShamanNode: SKSpriteNode {
     func update(dt: TimeInterval, playerPosition: CGPoint) {
         guard state != .dead else { return }
 
-        // Hover ellipse
         hoverAngle += hoverSpeed * CGFloat(dt) * speedMultiplier
         let offsetX = cos(hoverAngle) * hoverRadius
         let offsetY = sin(hoverAngle) * hoverRadius * 0.5
-        position = CGPoint(x: hoverCenter.x + offsetX,
-                           y: hoverCenter.y + offsetY)
+        position = CGPoint(
+            x: hoverCenter.x + offsetX,
+            y: hoverCenter.y + offsetY
+        )
 
-        // Cast timer
         timeSinceLastCast += dt
         if timeSinceLastCast >= castInterval, state == .idle {
             castRockfall(at: playerPosition)
@@ -142,11 +131,12 @@ final class BlackrockShamanNode: SKSpriteNode {
         texture = castTexture
 
         let scaleUp = SKAction.scale(to: xScale * 1.08, duration: 0.12)
-        let hold    = SKAction.wait(forDuration: 0.12)
+        let hold = SKAction.wait(forDuration: 0.12)
         let scaleDown = SKAction.scale(to: xScale, duration: 0.1)
 
+        // MULTI-ROCK ONLY
         let spawn = SKAction.run { [weak self] in
-            self?.spawnFallingRock(above: target)
+            self?.spawnRockfall(at: target)
         }
 
         let finish = SKAction.run { [weak self] in
@@ -158,45 +148,55 @@ final class BlackrockShamanNode: SKSpriteNode {
         run(.sequence([scaleUp, spawn, hold, scaleDown, finish]), withKey: "cast")
     }
 
-    /// Spawns a rock above the target and drops it straight down.
-    private func spawnFallingRock(above target: CGPoint) {
+    // MARK: - Multi-rock fall (no single rock behavior)
+
+    private func spawnRockfall(at target: CGPoint) {
         guard let scene = self.scene else { return }
 
-        // If you have a rock sprite asset, use it:
-        // let rock = SKSpriteNode(texture: SKTexture(imageNamed: "sandstone_rock"))
-        // rock.texture?.filteringMode = .nearest
+        let rockTex = SKTexture(imageNamed: "shamanrock")
+        rockTex.filteringMode = .nearest
 
-        // Otherwise, placeholder circle
-        let rock = SKShapeNode(circleOfRadius: 18)
-        rock.fillColor = .brown
-        rock.strokeColor = .clear
-
-        rock.zPosition = 9
-        rock.position = CGPoint(x: target.x, y: target.y + 520) // spawn above screen-ish
-        scene.addChild(rock)
-
-        // Physics
-        let body = SKPhysicsBody(circleOfRadius: 18)
-        body.isDynamic = true
-        body.affectedByGravity = false
-        body.linearDamping = 0
-
-        // TODO: Update categories
-        body.categoryBitMask = Cat.shamanRock
-        body.collisionBitMask = 0
-        body.contactTestBitMask = Cat.player | Cat.finger
-
-        rock.physicsBody = body
-
-        // Straight down velocity
+        // Tuning knobs
+        let rockCount = Int.random(in: 6...10)
+        let spreadX: CGFloat = 120
+        let spawnHeight: CGFloat = 520
         let fallSpeed: CGFloat = 520
-        body.velocity = CGVector(dx: 0, dy: -fallSpeed)
+        let rockDiameter: CGFloat = 36
+        let delayStep: TimeInterval = 0.06
 
-        // Cleanup
-        rock.run(.sequence([
-            .wait(forDuration: 2.5),
-            .removeFromParent()
-        ]))
+        for i in 0..<rockCount {
+            let dx = CGFloat.random(in: -spreadX...spreadX)
+            let spawnPos = CGPoint(x: target.x + dx, y: target.y + spawnHeight)
+
+            let delay = SKAction.wait(forDuration: TimeInterval(i) * delayStep)
+            let spawnOne = SKAction.run {
+                let rock = SKSpriteNode(texture: rockTex)
+                rock.zPosition = 9
+                rock.size = CGSize(width: rockDiameter, height: rockDiameter)
+                rock.position = spawnPos
+                scene.addChild(rock)
+
+                let body = SKPhysicsBody(circleOfRadius: rockDiameter * 0.5)
+                body.isDynamic = true
+                body.affectedByGravity = false
+                body.linearDamping = 0
+                body.categoryBitMask = Cat.shamanrock
+                body.collisionBitMask = 0
+                body.contactTestBitMask = Cat.finger
+                rock.physicsBody = body
+
+                body.velocity = CGVector(dx: 0, dy: -fallSpeed)
+
+                rock.run(.repeatForever(.rotate(byAngle: .pi * 2, duration: 0.6)))
+                rock.run(.sequence([
+                    .wait(forDuration: 2.5),
+                    .removeFromParent()
+                ]))
+            }
+
+            // run the delayed spawn sequence on the shaman
+            run(.sequence([delay, spawnOne]))
+        }
     }
 
     // MARK: - Damage / death
