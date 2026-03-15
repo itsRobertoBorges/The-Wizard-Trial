@@ -103,7 +103,6 @@ final class BlackrockSpearmanNode: SKSpriteNode {
         setScale(scale)
 
         configurePhysics()
-
         queueSpawnSound()
         startWalkAnimation()
         startMovingDown(sceneHeight: sceneHeight)

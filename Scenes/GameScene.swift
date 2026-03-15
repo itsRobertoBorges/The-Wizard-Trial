@@ -2793,7 +2793,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
             if let spear = enemyBody.node as? BlackrockSpearmanNode {
                 let died = spear.takeDamage(10)
-                if died { awardXP(20); elfKillSubject.send(1) } // or make a spearmanKill publisher later
+                if died { awardXP(20); elfKillSubject.send(1) }
             }
 
             missileBody.node?.removeFromParent()
@@ -2991,8 +2991,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             Cat.shamanrock |
             Cat.elf |
             Cat.druid |
-            Cat.shaman
-
+            Cat.shaman |
+            Cat.spearman
+        
         fingerNode.physicsBody = body
         fingerNode.zPosition = 40
         addChild(fingerNode)
