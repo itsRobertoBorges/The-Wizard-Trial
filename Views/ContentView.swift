@@ -60,6 +60,7 @@ struct ContentView: View {
 
     // Have we already banked this run’s coins?
     @State private var hasBankedRunCoins: Bool = false
+    @AppStorage("WT_setCoinsTo10000_done") private var setCoinsTo10000Done: Bool = false
 
     // Mana timer
     private let manaTimer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
@@ -106,8 +107,14 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { geo in
             if(showOutro) {
-                WitheringForestOutroView {
-                    onExitToMenu()
+                if world == .blackrockValley {
+                    BlackrockEndingView {
+                        onExitToMenu()
+                    }
+                } else {
+                    WitheringForestOutroView {
+                        onExitToMenu()
+                    }
                 }
             } else {
                 ZStack {
@@ -139,10 +146,9 @@ struct ContentView: View {
                             inventory: inventory,
                             isMuted: isMuted,
                             onClose: { closePauseOverlay() },
+                            onResume: { closePauseOverlay() },
                             onMainMenu: {
                                 bankCoinsIfNeededAndExitToMenu()
-                                scene.stopSceneCompletely()
-                                onExitToMenu()
                             },
                             onToggleMute: {
                                 isMuted.toggle()
@@ -206,6 +212,7 @@ struct ContentView: View {
                             druidKills: druidKills,
                             onMainMenu: {
                                 bankCoinsIfNeeded()
+                                scene.stopSceneCompletely()
                                 onExitToMenu()
                             },
                             onTryAgain: {
@@ -358,7 +365,10 @@ struct ContentView: View {
         }
         .onAppear {
             resetRunState()
-            inventory.addCoins(1000)
+            if !setCoinsTo10000Done {
+                inventory.setCoins(10_000)
+                setCoinsTo10000Done = true
+            }
             
             scene.setPlayerLevel(level)
         }
@@ -411,6 +421,7 @@ struct ContentView: View {
                 Button {
                     guard !showDeathPopup else { return }
                     showPauseOverlay = true
+                    scene.pauseAllGameAudio()
                     scene.isPaused = true
                 } label: {
                     Text("PAUSE")
@@ -649,6 +660,8 @@ struct ContentView: View {
         withAnimation {
             showDeathPopup = false
         }
+        showPauseOverlay = false
+        wasPausedBeforeBackground = false
 
         // Restore HP & Mana (40%)
         let maxHp = maxHP(for: level)
@@ -658,8 +671,8 @@ struct ContentView: View {
         mana   = maxMn * 0.4
 
         // 🔥 Fully cancel the game over freeze
-        scene.cancelGameOverState()   // <-- this fixes your pause bug
-        scene.isPaused = false        // safety unpause
+        scene.cancelGameOverState()
+        scene.resumeAfterRevive()
 
         // Revive sound
         scene.playReviveSound()
@@ -812,6 +825,7 @@ struct ContentView: View {
     private func closePauseOverlay() {
         showPauseOverlay = false
         scene.isPaused = false
+        scene.resumeAllGameAudio()
     }
 }
 
@@ -1063,6 +1077,7 @@ struct PauseOverlay: View {
     @ObservedObject var inventory: PlayerInventory
     let isMuted: Bool
     let onClose: () -> Void
+    let onResume: () -> Void
     let onMainMenu: () -> Void
     let onToggleMute: () -> Void
     let onSelectSlotItem: (ShopItem) -> Void
@@ -1101,6 +1116,22 @@ struct PauseOverlay: View {
             .padding(.top, 8)
 
             HStack(spacing: 14) {
+                Button {
+                    onResume()
+                } label: {
+                    Text("RESUME")
+                        .font(.custom("PressStart2P-Regular", size: 9))
+                        .lineLimit(1)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color.black.opacity(0.9))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.white, lineWidth: 2)
+                        )
+                }
+
                 Button {
                     onMainMenu()
                 } label: {

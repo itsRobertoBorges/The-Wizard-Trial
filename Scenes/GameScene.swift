@@ -17,6 +17,8 @@ struct Cat {
     static let shaman:   UInt32 = 1 << 8
     static let shamanrock: UInt32 = 1 << 10
     static let spearman: UInt32 = 1 << 11
+    static let warchief: UInt32 = 1 << 12
+    static let warchiefVoid: UInt32 = 1 << 13
 }
 
 final class GameScene: SKScene, SKPhysicsContactDelegate {
@@ -162,6 +164,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         isPaused = false
     }
 
+    public func resumeAfterRevive() {
+        isGameOver = false
+        isPaused = false
+        physicsWorld.speed = 1.0
+        if physicsWorld.contactDelegate == nil {
+            physicsWorld.contactDelegate = self
+        }
+        view?.isPaused = false
+        lastUpdate = 0
+        resumeAllGameAudio()
+    }
+
     // Mute or not to mute
     private var isMuted = false
 
@@ -203,6 +217,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private var bgmPlayer: AVAudioPlayer?
+    private var isWarchiefBossMusicActive = false
+    private var warchiefVoidBuildupPlayer: AVAudioPlayer?
+    private var warchiefVoidBlastPlayer: AVAudioPlayer?
+    private var bgmWasPlayingBeforePause = false
+    private var voidBuildupWasPlayingBeforePause = false
+    private var voidBlastWasPlayingBeforePause = false
+    private var reviveWasPlayingBeforePause = false
+    private var isShuttingDownScene = false
     private var isGameOver = false
     private var hasStarted = false
     public var autoStartOnPresent: Bool = true
@@ -251,6 +273,14 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var blackrockAxeThrowers: [BlackrockAxeThrowerNode] = []
     private var blackrockShamans: [BlackrockShamanNode] = []
     private var blackrockSpearmen: [BlackrockSpearmanNode] = []
+    private var warchiefBoss: WarchiefNode?
+    private let blackrockBossTestMode: Bool = false
+    private var warchiefSurvivalPhaseActive = false
+    private var fallingRockNodes: [SKSpriteNode] = []
+    private var fallingSpearNodes: [SKSpriteNode] = []
+    private var warchiefEnraged = false
+    private var hasTriggeredWarchiefEnding = false
+    private var blackrockBossFightSpeedMultiplier: CGFloat { warchiefEnraged ? 2.0 : 1.0 }
     
     // --------------------------------------------------------
     // MARK: Scene lifecycle
@@ -301,6 +331,32 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         ]))
     }
 
+    func handleWarchiefDefeat() {
+        guard !hasTriggeredWarchiefEnding else { return }
+        hasTriggeredWarchiefEnding = true
+
+        warchiefHealthBarBG.removeFromParent()
+        warchiefHealthBarFill.removeFromParent()
+        warchiefNameLabel.removeFromParent()
+        warchiefBoss = nil
+        removeAction(forKey: warchiefSpearmanPressureKey)
+        endWarchiefSurvivalPhase()
+
+        let black = SKSpriteNode(color: .black, size: size)
+        black.zPosition = 99999
+        black.alpha = 0
+        black.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        addChild(black)
+
+        black.run(.sequence([
+            .fadeIn(withDuration: 1.2),
+            .wait(forDuration: 0.6),
+            .run { [weak self] in
+                self?.bossDefeatedSubject.send(())
+            }
+        ]))
+    }
+
     override func didMove(to view: SKView) {
         buildBackgroundIfNeeded()
         layoutBackground()
@@ -310,19 +366,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         view.isMultipleTouchEnabled = true
         
-        if world == .blackrockValley {
-            run(.sequence([
-                .wait(forDuration: 0.5),
-                .run { [weak self] in
-                    self?.spawnBlackrockShaman()
-                    self?.spawnBlackrockSpearman()
-                }
-            ]))
-        }
-
-        //inventory
-        coins = SaveManager.shared.loadCoins()
-        coinsSubject.send(coins)
+        // Run-only coin counter (banked in ContentView on death/menu)
+        coins = 0
+        coinsSubject.send(0)
 
         inventory = SaveManager.shared.loadInventory()
 
@@ -346,14 +392,27 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     public func stopSceneCompletely() {
-        removeAllActions()
+        if isShuttingDownScene { return }
+        isShuttingDownScene = true
+        isPaused = true
+        physicsWorld.speed = 0
+        physicsWorld.contactDelegate = nil
 
+        removeAction(forKey: warchiefSpearmanPressureKey)
+        endWarchiefSurvivalPhase()
+        stopWarchiefVoidBuildupLoop()
+        warchiefVoidBlastPlayer?.stop()
+        warchiefVoidBlastPlayer?.currentTime = 0
+        warchiefBoss?.stopRoarIfPlaying()
+
+        removeAllActions()
         children.forEach { $0.removeAllActions() }
         removeAllChildren()
 
         bgmPlayer?.stop()
         bgmPlayer?.currentTime = 0
         bgmPlayer?.volume = 1.0
+        bgmPlayer = nil
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
@@ -365,6 +424,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private var bohbanHealthBarBG = SKShapeNode()
     private var bohbanHealthBarFill = SKShapeNode()
     private var bohbanNameLabel = SKLabelNode(fontNamed: "PressStart2P-Regular")
+    private var warchiefHealthBarBG = SKShapeNode()
+    private var warchiefHealthBarFill = SKShapeNode()
+    private var warchiefNameLabel = SKLabelNode(fontNamed: "PressStart2P-Regular")
 
     func createBohbanHealthBar() {
 
@@ -425,11 +487,71 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         bohbanHealthBarFill.path = CGPath(rect: fillRect, transform: nil)
     }
 
+    func createWarchiefHealthBar() {
+
+        warchiefHealthBarBG.removeFromParent()
+        warchiefHealthBarFill.removeFromParent()
+        warchiefNameLabel.removeFromParent()
+
+        let barWidth: CGFloat = 22
+        let barHeight: CGFloat = size.height * 0.42
+        let xPos = size.width - 60
+        let yPos = size.height / 2
+
+        let bgRect = CGRect(x: -barWidth/2, y: -barHeight/2, width: barWidth, height: barHeight)
+        warchiefHealthBarBG = SKShapeNode(rect: bgRect, cornerRadius: 4)
+        warchiefHealthBarBG.strokeColor = .white
+        warchiefHealthBarBG.lineWidth = 4
+        warchiefHealthBarBG.fillColor = .clear
+        warchiefHealthBarBG.position = CGPoint(x: xPos, y: yPos)
+        warchiefHealthBarBG.zPosition = 999
+        addChild(warchiefHealthBarBG)
+
+        let fillRect = CGRect(x: -barWidth/2 + 3,
+                              y: -barHeight/2 + 3,
+                              width: barWidth - 6,
+                              height: barHeight - 6)
+
+        warchiefHealthBarFill = SKShapeNode(rect: fillRect, cornerRadius: 3)
+        warchiefHealthBarFill.fillColor = .red
+        warchiefHealthBarFill.strokeColor = .clear
+        warchiefHealthBarFill.position = CGPoint(x: xPos, y: yPos)
+        warchiefHealthBarFill.zPosition = 1000
+        addChild(warchiefHealthBarFill)
+
+        warchiefNameLabel = SKLabelNode(fontNamed: "PressStart2P-Regular")
+        warchiefNameLabel.text = "THE WARCHIEF"
+        warchiefNameLabel.fontSize = 16
+        warchiefNameLabel.fontColor = .white
+        warchiefNameLabel.position = CGPoint(x: xPos + 40, y: yPos)
+        warchiefNameLabel.zRotation = .pi / 2
+        warchiefNameLabel.zPosition = 1001
+        addChild(warchiefNameLabel)
+    }
+
+    func updateWarchiefHealthBar(currentHP: Int, maxHP: Int) {
+        let percent = max(0, min(1, CGFloat(currentHP) / CGFloat(maxHP)))
+
+        let fullHeight = size.height * 0.42 - 6
+        let barWidth: CGFloat = 22 - 6
+        let newHeight = fullHeight * percent
+
+        let fillRect = CGRect(
+            x: -barWidth/2,
+            y: -(fullHeight/2),
+            width: barWidth,
+            height: newHeight
+        )
+
+        warchiefHealthBarFill.path = CGPath(rect: fillRect, transform: nil)
+    }
+
     // --------------------------------------------------------
     // MARK: Begin / world-specific spawns
     // --------------------------------------------------------
 
     private let blackrockLoopKey = "blackrockWaveLoop"
+    private let warchiefSpearmanPressureKey = "warchiefSpearmanPressure"
     
     private func startBlackrockWaveNode() {
 
@@ -443,14 +565,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // Optional but recommended: make sure no delayed wave actions are still queued
         removeAction(forKey: "blackrockWaveStart")
 
-        setupBlackrockWaves()
+        if blackrockBossTestMode {
+            spawnWarchiefBossForTesting()
+        } else {
+            setupBlackrockWaves()
 
-        // Start wave 1 exactly once
-        run(.sequence([
-            .run { [weak self] in
-                self?.startNextBlackrockWave()
-            }
-        ]), withKey: "blackrockWaveStart")
+            // Start wave 1 exactly once
+            run(.sequence([
+                .run { [weak self] in
+                    self?.startNextBlackrockWave()
+                }
+            ]), withKey: "blackrockWaveStart")
+        }
 
         bgmPlayer?.play()
     }
@@ -468,6 +594,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         case .blackrockValley:
             startBlackrockWaveNode()         // Blackrock-only wave system
 
+        case .drownedSanctum:
+            startScoringAndSpawns()
+
         default:
             bgmPlayer?.play()
         }
@@ -478,9 +607,15 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func startNextBlackrockWave() {
         currentBlackrockWaveIndex += 1
 
-        // All Blackrock waves done – for now just stop
+        // After the final wave, transition into the Warchief fight.
         if currentBlackrockWaveIndex >= blackrockWaves.count {
-            // later you can spawn a Blackrock boss here
+            blackrockWaveInProgress = false
+            run(.sequence([
+                .wait(forDuration: 1.5),
+                .run { [weak self] in
+                    self?.spawnWarchiefBossForTesting()
+                }
+            ]))
             return
         }
 
@@ -497,7 +632,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         for _ in 0..<config.shamans {
             spawnBlackrockShaman()
         }
-        
+
         for _ in 0..<config.spearmen {
             spawnBlackrockSpearman()
         }
@@ -553,12 +688,17 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // --------------------------------------------------------
 
     public func fullReset() {
+        isShuttingDownScene = false
+        physicsWorld.speed = 1.0
+        physicsWorld.contactDelegate = self
+        hasTriggeredWarchiefEnding = false
 
         // Stop spawners/timers/actions
         isPaused = false
         removeAllActions()
         children.forEach { $0.removeAllActions() }
         removeAllChildren()
+        removeAction(forKey: warchiefSpearmanPressureKey)
 
         // Rebuild background
         arenaBackground = nil
@@ -572,6 +712,17 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         blackrockAxeThrowers.removeAll()
         blackrockShamans.removeAll()
         blackrockSpearmen.removeAll()
+        endWarchiefSurvivalPhase()
+        fallingRockNodes.removeAll()
+        fallingSpearNodes.removeAll()
+        hasTriggeredWarchiefEnding = false
+        warchiefBoss?.removeAllActions()
+        warchiefBoss?.removeFromParent()
+        warchiefBoss = nil
+        isWarchiefBossMusicActive = false
+        warchiefHealthBarBG.removeFromParent()
+        warchiefHealthBarFill.removeFromParent()
+        warchiefNameLabel.removeFromParent()
 
         // Boss cleanup
         bohban?.removeAllActions()
@@ -615,6 +766,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         waveSubject.send(1)
 
         // Music: stop old, rebuild fresh ONCE, rewind, but do not play here
+        stopWarchiefVoidBuildupLoop()
         bgmPlayer?.stop()
         bgmPlayer = nil
         configureMusic()              // prepares player at time 0
@@ -706,7 +858,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         waveSubject.send(currentWaveIndex + 1)
 
         for _ in 0..<config.ents {
-            spawnEnt()
+            spawnEnt();
         }
 
         for _ in 0..<config.elves {
@@ -745,23 +897,25 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     private func setupBlackrockWaves() {
         blackrockWaves.removeAll()
 
-        for wave in 1...49 {
-            let axeCount = min(2 + wave / 2, 18)
+        for wave in 1...39 {
+            // Keep early waves light, then ramp as we approach wave 39.
+            // Wave 1 starts at minimum pressure.
+            let axeCount = min(1 + (wave - 1) / 5, 10)
 
-            // Shamans: start at wave 5, then +1 every ~6 waves, cap at 4
-            let shamanCount: Int
-            if wave < 5 {
-                shamanCount = 0
-            } else {
-                shamanCount = min(1 + (wave - 5) / 6, 4)
-            }
-
-            // Spearmen: start at wave 2, scale slowly, cap at 10
+            // Spearmen start later and ramp slowly.
             let spearmanCount: Int
-            if wave < 2 {
+            if wave < 10 {
                 spearmanCount = 0
             } else {
-                spearmanCount = min(1 + (wave - 2) / 3, 10)
+                spearmanCount = min(1 + (wave - 10) / 5, 2)
+            }
+
+            // No shamans until wave 25.
+            let shamanCount: Int
+            if wave < 25 {
+                shamanCount = 0
+            } else {
+                shamanCount = min(1 + (wave - 25) / 8, 2)
             }
 
             blackrockWaves.append(BlackrockWaveConfig(
@@ -784,6 +938,40 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         if !isMuted {
             run(.playSoundFileNamed("autoattacksound.mp3", waitForCompletion: false))
         }
+    }
+
+    public func pauseAllGameAudio() {
+        bgmWasPlayingBeforePause = bgmPlayer?.isPlaying ?? false
+        voidBuildupWasPlayingBeforePause = warchiefVoidBuildupPlayer?.isPlaying ?? false
+        voidBlastWasPlayingBeforePause = warchiefVoidBlastPlayer?.isPlaying ?? false
+        reviveWasPlayingBeforePause = revivePlayer?.isPlaying ?? false
+
+        bgmPlayer?.pause()
+        warchiefVoidBuildupPlayer?.pause()
+        warchiefVoidBlastPlayer?.pause()
+        revivePlayer?.pause()
+        warchiefBoss?.pauseRoarForScenePause()
+    }
+
+    public func resumeAllGameAudio() {
+        if bgmWasPlayingBeforePause, !isMuted {
+            bgmPlayer?.play()
+        }
+        if voidBuildupWasPlayingBeforePause {
+            warchiefVoidBuildupPlayer?.play()
+        }
+        if voidBlastWasPlayingBeforePause {
+            warchiefVoidBlastPlayer?.play()
+        }
+        if reviveWasPlayingBeforePause {
+            revivePlayer?.play()
+        }
+        warchiefBoss?.resumeRoarForScenePause()
+
+        bgmWasPlayingBeforePause = false
+        voidBuildupWasPlayingBeforePause = false
+        voidBlastWasPlayingBeforePause = false
+        reviveWasPlayingBeforePause = false
     }
 
     private func startScoringAndSpawns() {
@@ -937,7 +1125,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let pos    = CGPoint(x: spawnX, y: spawnY)
 
         let targetDiameter = fingerRadius * 3.0
-        let ent = EntNode(targetDiameter: targetDiameter)
+        let entKind: EntNode.Kind = (world == .drownedSanctum) ? .undeadKnight : .forestEnt
+        let ent = EntNode(targetDiameter: targetDiameter, kind: entKind)
         ent.position = pos
         addChild(ent)
         ents.append(ent)
@@ -979,6 +1168,317 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: BLACKROCK VALLEY ENEMIES
     // --------------------------------------------------------
 
+    private func spawnWarchiefBossForTesting() {
+        guard !isGameOver else { return }
+        guard warchiefBoss == nil else { return }
+        warchiefEnraged = false
+
+        let targetDiameter = fingerRadius * 4.8
+        let spawnX = size.width * 0.5
+        let boss = WarchiefNode(targetDiameter: targetDiameter)
+        boss.position = CGPoint(x: spawnX, y: size.height + 220)
+        addChild(boss)
+        createWarchiefHealthBar()
+        updateWarchiefHealthBar(currentHP: boss.hp, maxHP: boss.maxHP)
+        boss.onJumpPhaseStart = { [weak self] in
+            self?.startWarchiefSurvivalPhase()
+        }
+        boss.onJumpPhaseEnd = { [weak self] in
+            self?.endWarchiefSurvivalPhase()
+        }
+        boss.onVoidCast = { [weak self] bossPosition in
+            self?.spawnWarchiefVoid(fromBossPosition: bossPosition)
+        }
+        boss.onYell = { [weak self] yellCount in
+            self?.spawnEnemiesForWarchiefYell(yellCount: yellCount)
+        }
+
+        // Keep movement in upper/mid arena so player has space.
+        let roamRect = CGRect(
+            x: size.width * 0.15,
+            y: size.height * 0.44,
+            width: size.width * 0.70,
+            height: size.height * 0.40
+        )
+        boss.startIntroAndBehavior(introTargetY: size.height * 0.70, roamRect: roamRect)
+        warchiefBoss = boss
+        startWarchiefBossMusic()
+        startWarchiefSpearmanPressure()
+    }
+
+    private func startWarchiefSpearmanPressure() {
+        removeAction(forKey: warchiefSpearmanPressureKey)
+        let seq = SKAction.sequence([
+            .wait(forDuration: 15.0, withRange: 2.0),
+            .run { [weak self] in
+                guard let self else { return }
+                guard self.warchiefBoss != nil, !self.isGameOver else { return }
+                self.spawnBlackrockSpearman()
+            }
+        ])
+        run(.repeatForever(seq), withKey: warchiefSpearmanPressureKey)
+    }
+
+    private func spawnEnemiesForWarchiefYell(yellCount: Int) {
+        guard !isGameOver else { return }
+        let spawnCount = min(max(1, yellCount), 2)
+        for _ in 0..<spawnCount {
+            switch Int.random(in: 0...2) {
+            case 0:
+                spawnBlackrockAxeThrower()
+            case 1:
+                spawnBlackrockShaman()
+            default:
+                spawnBlackrockSpearman()
+            }
+        }
+        applyWarchiefFightSpeedToBlackrockEnemies()
+    }
+
+    private func applyWarchiefFightSpeedToBlackrockEnemies() {
+        let mult = blackrockBossFightSpeedMultiplier
+        for spearman in blackrockSpearmen {
+            spearman.speed = mult
+        }
+    }
+
+    private func spawnWarchiefVoid(fromBossPosition bossPos: CGPoint) {
+        guard !isGameOver else { return }
+
+        let voidNode = SKSpriteNode(imageNamed: "warchiefvoid")
+        voidNode.texture?.filteringMode = .nearest
+        voidNode.zPosition = 28
+        voidNode.position = CGPoint(x: bossPos.x, y: bossPos.y + 150)
+
+        let targetDiameter: CGFloat = 150
+        let scale = targetDiameter / max(voidNode.size.width, voidNode.size.height)
+        voidNode.setScale(scale * 0.15)
+
+        // Use texture-based physics so only opaque pixels are collidable.
+        if let tex = voidNode.texture {
+            let body = SKPhysicsBody(texture: tex, alphaThreshold: 0.05, size: voidNode.size)
+            body.isDynamic = true
+            body.affectedByGravity = false
+            body.usesPreciseCollisionDetection = true
+            body.categoryBitMask = Cat.warchiefVoid
+            body.collisionBitMask = 0
+            body.contactTestBitMask = Cat.finger
+            body.linearDamping = 0
+            voidNode.physicsBody = body
+        }
+
+        addChild(voidNode)
+
+        let spin = SKAction.repeatForever(.rotate(byAngle: .pi * 2, duration: 0.6))
+        voidNode.run(spin, withKey: "warchiefVoidSpin")
+        playWarchiefVoidBuildupLoop()
+
+        let launch = SKAction.run { [weak self, weak voidNode] in
+            guard let self, let voidNode else { return }
+            self.stopWarchiefVoidBuildupLoop()
+            self.playWarchiefVoidBlast()
+            let target = self.fingerNode.position
+            let dx = target.x - voidNode.position.x
+            let dy = target.y - voidNode.position.y
+            let len = max(1, hypot(dx, dy))
+            let ux = dx / len
+            let uy = dy / len
+
+            let travel: CGFloat = max(self.size.width, self.size.height) * 1.9
+            let end = CGPoint(
+                x: voidNode.position.x + ux * travel,
+                y: voidNode.position.y + uy * travel
+            )
+            let move = SKAction.move(to: end, duration: 1.6)
+            move.timingMode = .linear
+            voidNode.run(.sequence([move, .removeFromParent()]))
+        }
+        let adjustedGrow = SKAction.scale(to: scale, duration: 1.5)
+        adjustedGrow.timingMode = .easeInEaseOut
+        voidNode.run(.sequence([adjustedGrow, launch]))
+    }
+
+    private func startWarchiefSurvivalPhase() {
+        guard !warchiefSurvivalPhaseActive else { return }
+        warchiefSurvivalPhaseActive = true
+        let speedMult = max(1.0, Double(warchiefEnraged ? 2.0 : 1.0))
+
+        let axeBurst = SKAction.sequence([
+            .run { [weak self] in self?.spawnOffscreenAxeStrike() },
+            .wait(forDuration: 0.45 / speedMult, withRange: 0.15 / speedMult)
+        ])
+        run(.repeatForever(axeBurst), withKey: "warchiefAxePhase")
+
+        let rockRain = SKAction.sequence([
+            .run { [weak self] in self?.spawnFallingRockIfNeeded() },
+            .wait(forDuration: 0.75 / speedMult, withRange: 0.20 / speedMult)
+        ])
+        run(.repeatForever(rockRain), withKey: "warchiefRockPhase")
+
+        let spearRain = SKAction.sequence([
+            .run { [weak self] in self?.spawnFallingSpearIfNeeded() },
+            .wait(forDuration: 0.95 / speedMult, withRange: 0.20 / speedMult)
+        ])
+        run(.repeatForever(spearRain), withKey: "warchiefSpearPhase")
+    }
+
+    private func endWarchiefSurvivalPhase() {
+        warchiefSurvivalPhaseActive = false
+        removeAction(forKey: "warchiefAxePhase")
+        removeAction(forKey: "warchiefRockPhase")
+        removeAction(forKey: "warchiefSpearPhase")
+        for rock in fallingRockNodes { rock.removeFromParent() }
+        for spear in fallingSpearNodes { spear.removeFromParent() }
+        fallingRockNodes.removeAll()
+        fallingSpearNodes.removeAll()
+    }
+
+    private func spawnOffscreenAxeStrike() {
+        guard !isGameOver else { return }
+
+        let fromLeft = Bool.random()
+        let startX: CGFloat = fromLeft ? -80 : size.width + 80
+        let startY = CGFloat.random(in: size.height * 0.48...size.height * 0.88)
+        let start = CGPoint(x: startX, y: startY)
+
+        // Random direction (not aimed at player) for survival phase only.
+        let ux: CGFloat = fromLeft ? CGFloat.random(in: 0.45...1.0) : CGFloat.random(in: -1.0 ... -0.45)
+        let uy: CGFloat = CGFloat.random(in: -0.75...0.75)
+        let dirLen = max(0.001, hypot(ux, uy))
+        let nx = ux / dirLen
+        let ny = uy / dirLen
+
+        let axe = SKSpriteNode(imageNamed: "axesprite")
+        axe.texture?.filteringMode = .nearest
+        axe.zPosition = 25
+        axe.position = start
+
+        let targetDiameter: CGFloat = 120
+        let scale = targetDiameter / max(axe.size.width, axe.size.height)
+        axe.setScale(scale)
+
+        let body = SKPhysicsBody(circleOfRadius: 30)
+        body.isDynamic = true
+        body.affectedByGravity = false
+        body.categoryBitMask = Cat.elfArrow
+        body.collisionBitMask = 0
+        body.contactTestBitMask = Cat.finger
+        body.linearDamping = 0
+        axe.physicsBody = body
+
+        let travel: CGFloat = max(size.width, size.height) * 2.2
+        let end = CGPoint(x: start.x + nx * travel, y: start.y + ny * travel)
+        let move = SKAction.move(to: end, duration: 2.25)
+        move.timingMode = .linear
+
+        let spin = SKAction.repeatForever(.rotate(byAngle: .pi * 2, duration: 0.15))
+        let cleanup = SKAction.sequence([move, .removeFromParent()])
+
+        addChild(axe)
+        axe.run(spin)
+        axe.run(cleanup)
+    }
+
+    private func spawnFallingRockIfNeeded() {
+        guard !isGameOver else { return }
+        fallingRockNodes.removeAll { $0.parent == nil }
+        let availableSlots = max(0, 2 - fallingRockNodes.count)
+        guard availableSlots > 0 else { return }
+
+        // Reuse shaman-style small multi-rock rain behavior (capped to 2 active).
+        let rockTex = SKTexture(imageNamed: "shamanrock")
+        rockTex.filteringMode = .nearest
+
+        let rockCount = min(availableSlots, Int.random(in: 1...2))
+        let spreadX: CGFloat = 90
+        let spawnHeight: CGFloat = 140
+        let fallSpeed: CGFloat = 240 // slower than shaman's direct cast
+        let rockDiameter: CGFloat = 36
+        let delayStep: TimeInterval = 0.06
+        let centerX = CGFloat.random(in: 50...(size.width - 50))
+
+        for i in 0..<rockCount {
+            let dx = CGFloat.random(in: -spreadX...spreadX)
+            let spawnPos = CGPoint(x: centerX + dx, y: size.height + spawnHeight)
+
+            let delay = SKAction.wait(forDuration: TimeInterval(i) * delayStep)
+            let spawnOne = SKAction.run { [weak self] in
+                guard let self else { return }
+                self.fallingRockNodes.removeAll { $0.parent == nil }
+                guard self.fallingRockNodes.count < 2 else { return }
+
+                let rock = SKSpriteNode(texture: rockTex)
+                rock.zPosition = 22
+                rock.size = CGSize(width: rockDiameter, height: rockDiameter)
+                rock.position = spawnPos
+                self.addChild(rock)
+
+                let body = SKPhysicsBody(circleOfRadius: rockDiameter * 0.5)
+                body.isDynamic = true
+                body.affectedByGravity = false
+                body.linearDamping = 0
+                body.categoryBitMask = Cat.shamanrock
+                body.collisionBitMask = 0
+                body.contactTestBitMask = Cat.finger
+                rock.physicsBody = body
+
+                body.velocity = CGVector(dx: 0, dy: -fallSpeed)
+                self.fallingRockNodes.append(rock)
+
+                rock.run(.repeatForever(.rotate(byAngle: .pi * 2, duration: 0.6)))
+                let cleanup = SKAction.run { [weak self, weak rock] in
+                    guard let self, let rock else { return }
+                    self.fallingRockNodes.removeAll { $0 === rock }
+                }
+                rock.run(.sequence([.wait(forDuration: 4.0), .removeFromParent(), cleanup]))
+            }
+
+            run(.sequence([delay, spawnOne]))
+        }
+    }
+
+    private func spawnFallingSpearIfNeeded() {
+        guard !isGameOver else { return }
+        fallingSpearNodes.removeAll { $0.parent == nil }
+        guard fallingSpearNodes.count < 2 else { return }
+
+        let base = SKTexture(imageNamed: "orcspear")
+        base.filteringMode = .nearest
+        let spearTex = SKTexture(rect: CGRect(x: 0.0, y: 0.0, width: 0.5, height: 1.0), in: base)
+        spearTex.filteringMode = .nearest
+
+        let spear = SKSpriteNode(texture: spearTex)
+        spear.zPosition = 22
+        spear.position = CGPoint(
+            x: CGFloat.random(in: 50...(size.width - 50)),
+            y: size.height + 120
+        )
+        let targetDiameter: CGFloat = 130
+        let scale = targetDiameter / max(spear.size.width, spear.size.height)
+        spear.setScale(scale)
+        spear.zRotation = .pi
+
+        let body = SKPhysicsBody(circleOfRadius: max(14, max(spear.frame.width, spear.frame.height) * 0.18))
+        body.isDynamic = true
+        body.affectedByGravity = false
+        body.categoryBitMask = Cat.elfArrow
+        body.collisionBitMask = 0
+        body.contactTestBitMask = Cat.finger
+        body.linearDamping = 0
+        spear.physicsBody = body
+
+        addChild(spear)
+        fallingSpearNodes.append(spear)
+
+        let fall = SKAction.moveTo(y: -160, duration: 2.5)
+        fall.timingMode = .linear
+        let cleanup = SKAction.run { [weak self, weak spear] in
+            guard let self, let spear else { return }
+            self.fallingSpearNodes.removeAll { $0 === spear }
+        }
+        spear.run(.sequence([fall, .removeFromParent(), cleanup]))
+    }
+
     func spawnBlackrockSpearman() {
         guard !isGameOver else { return }
 
@@ -989,6 +1489,7 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             startX: x,
             sceneHeight: size.height
         )
+        spearman.speed = blackrockBossFightSpeedMultiplier
 
         addChild(spearman)
         blackrockSpearmen.append(spearman)
@@ -1024,7 +1525,9 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             targetDiameter: targetDiameter,
             startCenter: center
         )
+        shaman.alpha = 0
         addChild(shaman)
+        shaman.run(.fadeIn(withDuration: 0.2))
         blackrockShamans.append(shaman)
     }
 
@@ -1092,9 +1595,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let body = SKPhysicsBody(circleOfRadius: r)
         body.isDynamic = true
         body.affectedByGravity = false
+        body.usesPreciseCollisionDetection = true
         body.categoryBitMask = Cat.missile
         body.collisionBitMask = 0
-        body.contactTestBitMask = Cat.veggie | Cat.ent | Cat.elf | Cat.druid | Cat.shaman | Cat.spearman
+        body.contactTestBitMask = Cat.veggie | Cat.ent | Cat.elf | Cat.druid | Cat.shaman | Cat.spearman | Cat.warchief
         body.linearDamping = 0
         missile.physicsBody = body
 
@@ -1182,6 +1686,22 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                     shaman.speedMultiplier = blizzardSlowMultiplier
                 }
 
+                // WARCHIEF DAMAGE (spell: blizzard)
+                if let warchief = warchiefBoss, warchief.parent != nil {
+                    let died = warchief.takeDamage(20)
+                    updateWarchiefHealthBar(currentHP: warchief.hp, maxHP: warchief.maxHP)
+                    if died {
+                        handleWarchiefDefeat()
+                    }
+                }
+                
+                // BLACKROCK SPEARMAN DAMAGE
+                for spearman in blackrockSpearmen {
+                    guard spearman.parent != nil else { continue }
+                    let died = spearman.takeDamage(20)
+                    if died { awardXP(20); elfKillSubject.send(1) }
+                }
+
                 // DRUID DAMAGE
                 for druid in woodlandDruids {
                     let died = druid.takeDamage(20)
@@ -1206,6 +1726,18 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             let dtBoss = currentTime - lastBossUpdate
             lastBossUpdate = currentTime
             boss.update(dt: dtBoss, playerPosition: fingerNode.position, scene: self)
+        }
+
+        // Warchief enrage trigger at <= 5% HP
+        if let warchief = warchiefBoss, warchief.parent != nil, !warchiefEnraged,
+           warchief.hp <= warchief.maxHP / 20 {
+            warchiefEnraged = true
+            warchief.setActionSpeedMultiplier(2.0)
+            applyWarchiefFightSpeedToBlackrockEnemies()
+            if warchiefSurvivalPhaseActive {
+                endWarchiefSurvivalPhase()
+                startWarchiefSurvivalPhase()
+            }
         }
 
         func showBohbanExplosion(at p: CGPoint) {
@@ -1313,6 +1845,28 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                         if died { awardXP(30); druidKillSubject.send(1) }
                     }
                 }
+                
+                // BLACKROCK SPEARMAN
+                for spearman in blackrockSpearmen {
+                    guard spearman.parent != nil else { continue }
+                    let d = hypot(spearman.position.x - center.x, spearman.position.y - center.y)
+                    if d <= auraRadius {
+                        let died = spearman.takeDamage(10)
+                        if died { awardXP(20); elfKillSubject.send(1) }
+                    }
+                }
+
+                // WARCHIEF DAMAGE (spell: lightning shield aura)
+                if let warchief = warchiefBoss, warchief.parent != nil {
+                    let d = hypot(warchief.position.x - center.x, warchief.position.y - center.y)
+                    if d <= auraRadius {
+                        let died = warchief.takeDamage(20)
+                        updateWarchiefHealthBar(currentHP: warchief.hp, maxHP: warchief.maxHP)
+                        if died {
+                            handleWarchiefDefeat()
+                        }
+                    }
+                }
 
                 // DRUID
                 for druid in woodlandDruids {
@@ -1380,6 +1934,28 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                         if died { awardXP(20); elfKillSubject.send(1) }
                     }
                 }
+                
+                // BLACKROCK SPEARMAN
+                for spearman in blackrockSpearmen {
+                    guard spearman.parent != nil else { continue }
+                    let d = hypot(spearman.position.x - center.x, spearman.position.y - center.y)
+                    if d <= radius {
+                        let died = spearman.takeDamage(20)
+                        if died { awardXP(20); elfKillSubject.send(1) }
+                    }
+                }
+
+                // WARCHIEF DAMAGE (spell: ice block contact)
+                if let warchief = warchiefBoss, warchief.parent != nil {
+                    let d = hypot(warchief.position.x - center.x, warchief.position.y - center.y)
+                    if d <= radius {
+                        let died = warchief.takeDamage(20)
+                        updateWarchiefHealthBar(currentHP: warchief.hp, maxHP: warchief.maxHP)
+                        if died {
+                            handleWarchiefDefeat()
+                        }
+                    }
+                }
 
                 // DRUID
                 for druid in woodlandDruids {
@@ -1434,11 +2010,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
 
         // Update Blackrock axe throwers (only relevant in Blackrock Valley)
         if world == .blackrockValley {
+            let fightSpeed = (warchiefBoss != nil) ? blackrockBossFightSpeedMultiplier : 1.0
             for axe in blackrockAxeThrowers {
-                axe.update(dt: dt, playerPosition: fingerNode.position)
+                axe.update(dt: dt * Double(fightSpeed), playerPosition: fingerNode.position)
             }
             for shaman in blackrockShamans {
-                shaman.update(dt: dt, playerPosition: fingerNode.position)
+                shaman.update(dt: dt * Double(fightSpeed), playerPosition: fingerNode.position)
             }
             
         }
@@ -1464,13 +2041,12 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         fingerNode.zPosition = 200
 
         // Score (coins over time) 
-        if world == .witheringTree || world == .blackrockValley {
+        if world == .witheringTree || world == .blackrockValley || world == .drownedSanctum {
             coinAccumulator += dt
             while coinAccumulator >= 1 {
                 coinAccumulator -= 1
                 coins += 1
                 coinsSubject.send(coins)
-                SaveManager.shared.saveCoins(coins)
             }
         }
 
@@ -1482,6 +2058,23 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         blackrockAxeThrowers.removeAll { $0.parent == nil }
         blackrockShamans.removeAll { $0.parent == nil }
         blackrockSpearmen.removeAll { $0.parent == nil }
+        fallingRockNodes.removeAll { $0.parent == nil }
+        fallingSpearNodes.removeAll { $0.parent == nil }
+
+        if warchiefBoss == nil {
+            removeAction(forKey: warchiefSpearmanPressureKey)
+        }
+        
+        if isWarchiefBossMusicActive, warchiefBoss == nil {
+            restoreWorldMusicAfterWarchief()
+        }
+        if warchiefBoss?.parent == nil {
+            warchiefBoss = nil
+            warchiefHealthBarBG.removeFromParent()
+            warchiefHealthBarFill.removeFromParent()
+            warchiefNameLabel.removeFromParent()
+            endWarchiefSurvivalPhase()
+        }
 
         // WITHERING TREE progression
         if world == .witheringTree,
@@ -1643,9 +2236,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         let body = SKPhysicsBody(circleOfRadius: fireballSize * 0.4)
         body.isDynamic = true
         body.affectedByGravity = false
+        body.usesPreciseCollisionDetection = true
         body.categoryBitMask = Cat.missile
         body.collisionBitMask = 0
-        body.contactTestBitMask = Cat.ent | Cat.elf | Cat.druid
+        body.contactTestBitMask = Cat.ent | Cat.elf | Cat.druid | Cat.shaman | Cat.spearman | Cat.warchief
         body.linearDamping = 0
         fb.physicsBody = body
 
@@ -1959,7 +2553,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                cat == Cat.elfArrow ||
                cat == Cat.druid ||
                cat == Cat.druidOrb ||
-               cat == Cat.shamanrock
+               cat == Cat.shamanrock ||
+               cat == Cat.warchiefVoid
             {
 
                 if node.position.x < -pad ||
@@ -1978,6 +2573,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
     // --------------------------------------------------------
 
     func didBegin(_ contact: SKPhysicsContact) {
+        guard !isGameOver else { return }
+
         let a = contact.bodyA
         let b = contact.bodyB
         let mask = a.categoryBitMask | b.categoryBitMask
@@ -2001,7 +2598,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         // FIREBALL HIT (strong projectile)
         if mask == (Cat.missile | Cat.ent)
             || mask == (Cat.missile | Cat.elf)
-            || mask == (Cat.missile | Cat.druid) {
+            || mask == (Cat.missile | Cat.druid)
+            || mask == (Cat.missile | Cat.shaman)
+            || mask == (Cat.missile | Cat.spearman)
+            || mask == (Cat.missile | Cat.warchief) {
 
             let enemyBody: SKPhysicsBody
             let fireballBody: SKPhysicsBody
@@ -2037,6 +2637,24 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                     if died { awardXP(40); druidKillSubject.send(1) }
                 }
 
+                if let shaman = enemyBody.node as? BlackrockShamanNode {
+                    let died = shaman.takeDamage(50)
+                    if died { awardXP(30); druidKillSubject.send(1) }
+                }
+                
+                if let spear = enemyBody.node as? BlackrockSpearmanNode {
+                    let died = spear.takeDamage(50)
+                    if died { awardXP(20); elfKillSubject.send(1) }
+                }
+                
+                if let warchief = enemyBody.node as? WarchiefNode {
+                    let died = warchief.takeDamage(50)
+                    updateWarchiefHealthBar(currentHP: warchief.hp, maxHP: warchief.maxHP)
+                    if died {
+                        handleWarchiefDefeat()
+                    }
+                }
+
                 if let boss = bohban, boss.parent != nil {
                     let died = boss.takeDamage(20)
                     updateBohbanHealthBar(currentHP: boss.hp, maxHP: 2000)
@@ -2046,7 +2664,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
                     }
                 }
 
-                showHitPop(at: fireballBody.node!.position)
+                let popPoint = fireballBody.node?.position ?? contact.contactPoint
+                showHitPop(at: popPoint)
                 return
             }
         }
@@ -2077,6 +2696,31 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             }
 
             damageSubject.send(35)
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            return
+        }
+
+        // Player hit by Warchief void orb
+        if mask == (Cat.finger | Cat.warchiefVoid) {
+            let voidBody = (a.categoryBitMask == Cat.warchiefVoid) ? a : b
+            voidBody.node?.removeFromParent()
+
+            if isStormAuraActive || isIceBlockActive {
+                return
+            }
+
+            damageSubject.send(50)
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            return
+        }
+
+        // Player hit by spearman
+        if mask == (Cat.finger | Cat.spearman) {
+            if isStormAuraActive || isIceBlockActive {
+                return
+            }
+
+            damageSubject.send(30)
             UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
             return
         }
@@ -2150,6 +2794,32 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             if let spear = enemyBody.node as? BlackrockSpearmanNode {
                 let died = spear.takeDamage(10)
                 if died { awardXP(20); elfKillSubject.send(1) } // or make a spearmanKill publisher later
+            }
+
+            missileBody.node?.removeFromParent()
+            showHitPop(at: contact.contactPoint)
+            return
+        }
+
+        // Missile hits Warchief
+        if mask == (Cat.missile | Cat.warchief) {
+            let bossBody: SKPhysicsBody
+            let missileBody: SKPhysicsBody
+
+            if a.categoryBitMask == Cat.warchief {
+                bossBody = a
+                missileBody = b
+            } else {
+                bossBody = b
+                missileBody = a
+            }
+
+            if let warchief = bossBody.node as? WarchiefNode {
+                let died = warchief.takeDamage(10)
+                updateWarchiefHealthBar(currentHP: warchief.hp, maxHP: warchief.maxHP)
+                if died {
+                    handleWarchiefDefeat()
+                }
             }
 
             missileBody.node?.removeFromParent()
@@ -2283,8 +2953,10 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         removeAction(forKey: "entSpawns")
         removeAction(forKey: "elfSpawns")
         removeAction(forKey: "druidSpawns")
+        removeAction(forKey: warchiefSpearmanPressureKey)
 
         bgmPlayer?.setVolume(0.0, fadeDuration: 0.3)
+        stopWarchiefVoidBuildupLoop()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
             self?.bgmPlayer?.stop()
@@ -2482,6 +3154,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
             textureName = "witheringforest"
         case .blackrockValley:
             textureName = "blackrockvalleymap"
+        case .drownedSanctum:
+            textureName = "drownedsanctumarena"
         default:
             textureName = "witheringforest"
         }
@@ -2516,6 +3190,8 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         switch world {
         case .blackrockValley:
             resourceName = "blackrockvalleytheme"
+        case .drownedSanctum:
+            resourceName = "mist forest"
         default:
             resourceName = "Battle"
         }
@@ -2556,5 +3232,653 @@ final class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
 
+    private func startWarchiefBossMusic() {
+        guard !isWarchiefBossMusicActive else { return }
+        bgmPlayer?.stop()
+
+        let resourceNames = ["warchief", "Warchief"]
+        let extensions = ["mp3", "wav", "m4a", "ogg"]
+        var player: AVAudioPlayer?
+
+        for name in resourceNames {
+            if let url = Bundle.main.url(forResource: name, withExtension: nil) {
+                player = try? AVAudioPlayer(contentsOf: url)
+                if player != nil { break }
+            }
+            for ext in extensions {
+                if let url = Bundle.main.url(forResource: name, withExtension: ext) {
+                    player = try? AVAudioPlayer(contentsOf: url)
+                    if player != nil { break }
+                }
+            }
+            if player != nil { break }
+        }
+
+        if player == nil {
+            for name in resourceNames {
+                if let asset = NSDataAsset(name: name) {
+                    player = try? AVAudioPlayer(data: asset.data)
+                    if player != nil { break }
+                }
+            }
+        }
+
+        guard let p = player else {
+            print("Could not find BGM resource: warchief")
+            return
+        }
+
+        isWarchiefBossMusicActive = true
+        p.numberOfLoops = -1
+        p.volume = 1.0
+        p.prepareToPlay()
+        p.play()
+        bgmPlayer = p
+    }
+
+    private func restoreWorldMusicAfterWarchief() {
+        isWarchiefBossMusicActive = false
+        bgmPlayer?.stop()
+        bgmPlayer = nil
+        configureMusic()
+        if !isMuted {
+            bgmPlayer?.play()
+        }
+    }
+
+    private func resolveAudioPlayer(resourceBaseNames: [String]) -> AVAudioPlayer? {
+        let exts = ["mp3", "wav", "m4a", "ogg"]
+        for name in resourceBaseNames {
+            if let url = Bundle.main.url(forResource: name, withExtension: nil),
+               let player = try? AVAudioPlayer(contentsOf: url) {
+                return player
+            }
+            for ext in exts {
+                if let url = Bundle.main.url(forResource: name, withExtension: ext),
+                   let player = try? AVAudioPlayer(contentsOf: url) {
+                    return player
+                }
+            }
+        }
+        for name in resourceBaseNames {
+            if let asset = NSDataAsset(name: name),
+               let player = try? AVAudioPlayer(data: asset.data) {
+                return player
+            }
+        }
+        return nil
+    }
+
+    private func playWarchiefVoidBuildupLoop() {
+        if warchiefVoidBuildupPlayer == nil {
+            // Prefer exact renamed file first.
+            if let url = Bundle.main.url(forResource: "voidspawn", withExtension: "wav") {
+                warchiefVoidBuildupPlayer = try? AVAudioPlayer(contentsOf: url)
+            }
+            if warchiefVoidBuildupPlayer == nil {
+                warchiefVoidBuildupPlayer = resolveAudioPlayer(resourceBaseNames: ["voidspawn"])
+                    ?? resolveAudioPlayer(resourceBaseNames: ["VoidSpawn", "voidSpawn"])
+            }
+        }
+        guard let player = warchiefVoidBuildupPlayer else { return }
+        player.stop()
+        player.currentTime = 0
+        player.numberOfLoops = -1
+        player.volume = 1.0
+        player.play()
+    }
+
+    private func stopWarchiefVoidBuildupLoop() {
+        warchiefVoidBuildupPlayer?.stop()
+        warchiefVoidBuildupPlayer?.currentTime = 0
+    }
+
+    private func playWarchiefVoidBlast() {
+        // Create/use a fresh player per blast trigger for reliability.
+        if let url = Bundle.main.url(forResource: "voidshoot", withExtension: "wav") {
+            warchiefVoidBlastPlayer = try? AVAudioPlayer(contentsOf: url)
+        } else {
+            warchiefVoidBlastPlayer = resolveAudioPlayer(resourceBaseNames: ["voidshoot", "VoidShoot", "voidShoot"])
+                ?? resolveAudioPlayer(resourceBaseNames: ["voidblast", "VoidBlast", "voidBlast"])
+        }
+        guard let player = warchiefVoidBlastPlayer else { return }
+        player.stop()
+        player.currentTime = 0
+        player.numberOfLoops = 0
+        player.volume = 1.0
+        player.prepareToPlay()
+        player.play()
+    }
+
+
+}
+
+final class WarchiefNode: SKSpriteNode {
+
+    private enum Facing {
+        case up
+        case down
+        case right
+        case left
+    }
+
+    private enum BossAction {
+        case yell
+        case cast
+        case jump
+    }
+
+    let maxHP: Int = 6000
+    private(set) var hp: Int = 6000
+
+    private var facing: Facing = .down
+    private var roamRect: CGRect = .zero
+    private var isDead = false
+    private var actionSpeedMultiplier: Double = 1.0
+    private var yellCount: Int = 0
+    private var nextYellAllowedAt: TimeInterval = 0
+    private var nextJumpAllowedAt: TimeInterval = 0
+    private let yellCooldown: TimeInterval = 30.0
+    private let jumpCooldown: TimeInterval = 30.0
+    private var roarPlayer: AVAudioPlayer?
+    private lazy var warchiefRoarDuration: TimeInterval = resolveWarchiefRoarDuration()
+
+    private var walkDownFrames: [SKTexture] = []
+    private var walkUpFrames: [SKTexture] = []
+    private var walkRightFrames: [SKTexture] = []
+
+    private var idleDownFrames: [SKTexture] = []
+    private var idleUpFrames: [SKTexture] = []
+    private var idleRightFrames: [SKTexture] = []
+
+    private var yellDownFrames: [SKTexture] = []
+
+    private var castDownFrames: [SKTexture] = []
+    private var castRightFrames: [SKTexture] = []
+    private var jumpDownFrames: [SKTexture] = []
+    var onJumpPhaseStart: (() -> Void)?
+    var onJumpPhaseEnd: (() -> Void)?
+    var onVoidCast: ((CGPoint) -> Void)?
+    var onYell: ((Int) -> Void)?
+
+    init(targetDiameter: CGFloat) {
+        let fallback = SKTexture(imageNamed: "Warchief-iso_idle_down-v2")
+        fallback.filteringMode = .nearest
+        super.init(texture: fallback, color: .clear, size: fallback.size())
+
+        name = "warchiefBoss"
+        zPosition = 30
+
+        let scale = targetDiameter / max(fallback.size().width, fallback.size().height)
+        setScale(scale)
+
+        loadAllAnimations()
+        setupPhysics()
+        playIdle(for: .down)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func setActionSpeedMultiplier(_ multiplier: Double) {
+        actionSpeedMultiplier = max(1.0, multiplier)
+    }
+
+    private func scaledDuration(_ base: TimeInterval) -> TimeInterval {
+        base / actionSpeedMultiplier
+    }
+
+    private func scaledFrameTime(_ base: TimeInterval) -> TimeInterval {
+        base / actionSpeedMultiplier
+    }
+
+    @discardableResult
+    func takeDamage(_ amount: Int) -> Bool {
+        guard !isDead else { return false }
+
+        hp = max(0, hp - amount)
+
+        let flash = SKAction.sequence([
+            .colorize(with: .red, colorBlendFactor: 0.9, duration: 0.08),
+            .colorize(withColorBlendFactor: 0.0, duration: 0.15)
+        ])
+        removeAction(forKey: "warchiefHitFlash")
+        run(flash, withKey: "warchiefHitFlash")
+
+        if hp <= 0 {
+            die()
+            return true
+        }
+        return false
+    }
+
+    private func die() {
+        guard !isDead else { return }
+        isDead = true
+        removeAllActions()
+        physicsBody = nil
+        run(.sequence([
+            .group([
+                .fadeOut(withDuration: 0.25),
+                .scale(to: xScale * 1.1, duration: 0.25)
+            ]),
+            .removeFromParent()
+        ]))
+    }
+
+    func startIntroAndBehavior(introTargetY: CGFloat, roamRect: CGRect) {
+        guard !isDead else { return }
+        self.roamRect = roamRect
+
+        removeAction(forKey: "warchiefBehavior")
+        removeAction(forKey: "warchiefMove")
+        removeAction(forKey: "warchiefAction")
+
+        setFacing(.down)
+        playWalk(for: .down)
+
+        let introDuration = scaledDuration(TimeInterval(CGFloat.random(in: 3.0...4.0)))
+        let moveDown = SKAction.moveTo(y: introTargetY, duration: introDuration)
+        moveDown.timingMode = .easeInEaseOut
+
+        run(moveDown, withKey: "warchiefMove")
+
+        run(.sequence([
+            .wait(forDuration: introDuration),
+            .run { [weak self] in
+                self?.playIdle(for: .down)
+            },
+            .wait(forDuration: scaledDuration(0.25)),
+            .run { [weak self] in
+                self?.runRoamLoop()
+            }
+        ]), withKey: "warchiefBehavior")
+    }
+
+    private func runRoamLoop() {
+        guard !isDead else { return }
+
+        let target = randomPoint(in: roamRect)
+        let dx = target.x - position.x
+        let dy = target.y - position.y
+        let distance = max(1, hypot(dx, dy))
+
+        let chosenFacing: Facing
+        if abs(dx) > abs(dy) {
+            chosenFacing = dx >= 0 ? .right : .left
+        } else {
+            chosenFacing = dy >= 0 ? .up : .down
+        }
+
+        setFacing(chosenFacing)
+        playWalk(for: chosenFacing)
+
+        let speed: CGFloat = 130
+        let moveDuration = scaledDuration(TimeInterval(distance / speed))
+        let move = SKAction.move(to: target, duration: moveDuration)
+        move.timingMode = .easeInEaseOut
+
+        let pause = SKAction.wait(forDuration: scaledDuration(TimeInterval(CGFloat.random(in: 0.15...0.45))))
+
+        let doRandomAction = SKAction.run { [weak self] in
+            self?.runRandomBossAction()
+        }
+
+        run(.sequence([move, pause, doRandomAction]), withKey: "warchiefMove")
+    }
+
+    private func runRandomBossAction() {
+        guard !isDead else { return }
+        let now = CACurrentMediaTime()
+        var availableActions: [BossAction] = [.cast] // Void has no cooldown
+        if now >= nextYellAllowedAt {
+            availableActions.append(.yell)
+        }
+        if now >= nextJumpAllowedAt {
+            availableActions.append(.jump)
+        }
+        let action: BossAction = availableActions.randomElement() ?? .cast
+
+        let frames: [SKTexture]
+        switch action {
+        case .yell:
+            nextYellAllowedAt = now + yellCooldown
+            frames = framesForYell(facing: facing)
+        case .cast:
+            runCastVoidAction()
+            return
+        case .jump:
+            nextJumpAllowedAt = now + jumpCooldown
+            runJumpSurvivalAction()
+            return
+        }
+
+        guard !frames.isEmpty else {
+            playIdle(for: facing)
+            run(.sequence([
+                .wait(forDuration: scaledDuration(0.3)),
+                .run { [weak self] in self?.runRoamLoop() }
+            ]), withKey: "warchiefAction")
+            return
+        }
+
+        let yellFrameTime = max(0.02, warchiefRoarDuration / Double(max(1, frames.count)))
+        let animate = SKAction.animate(with: frames, timePerFrame: yellFrameTime, resize: false, restore: false)
+        let settle = SKAction.wait(forDuration: scaledDuration(TimeInterval(CGFloat.random(in: 0.35...0.7))))
+        let emitYell = SKAction.run { [weak self] in
+            guard let self else { return }
+            self.yellCount += 1
+            self.onYell?(self.yellCount)
+        }
+        let playRoar = SKAction.run { [weak self] in
+            self?.playWarchiefRoar()
+        }
+
+        run(.sequence([
+            playRoar,
+            animate,
+            emitYell,
+            .run { [weak self] in self?.playIdle(for: self?.facing ?? .down) },
+            settle,
+            .run { [weak self] in self?.runRoamLoop() }
+        ]), withKey: "warchiefAction")
+    }
+
+    private func runCastVoidAction() {
+        guard !isDead else { return }
+
+        let frames = framesForCast(facing: facing)
+        guard !frames.isEmpty else {
+            playIdle(for: facing)
+            run(.sequence([
+                .wait(forDuration: scaledDuration(0.25)),
+                .run { [weak self] in self?.runRoamLoop() }
+            ]), withKey: "warchiefAction")
+            return
+        }
+
+        removeAction(forKey: "warchiefMove")
+        removeAction(forKey: "warchiefAction")
+        removeAction(forKey: "warchiefWalk")
+        removeAction(forKey: "warchiefIdle")
+
+        let raiseHands = SKAction.animate(with: frames, timePerFrame: scaledFrameTime(0.08), resize: false, restore: false)
+        let holdHandsAndCast = SKAction.run { [weak self] in
+            guard let self else { return }
+            if let holdFrame = frames.last {
+                self.texture = holdFrame
+            }
+            self.onVoidCast?(self.position)
+        }
+        let holdDuration = SKAction.wait(forDuration: scaledDuration(3.0))
+        let settle = SKAction.wait(forDuration: scaledDuration(TimeInterval(CGFloat.random(in: 0.3...0.6))))
+
+        run(.sequence([
+            raiseHands,
+            holdHandsAndCast,
+            holdDuration,
+            .run { [weak self] in self?.playIdle(for: self?.facing ?? .down) },
+            settle,
+            .run { [weak self] in self?.runRoamLoop() }
+        ]), withKey: "warchiefAction")
+    }
+
+    private func runJumpSurvivalAction() {
+        guard !isDead else { return }
+        guard !jumpDownFrames.isEmpty else {
+            runRoamLoop()
+            return
+        }
+
+        removeAction(forKey: "warchiefMove")
+        removeAction(forKey: "warchiefAction")
+
+        setFacing(.down)
+        playIdle(for: .down)
+
+        let windup = SKAction.wait(forDuration: scaledDuration(2.0))
+        let jumpAnim = SKAction.animate(with: jumpDownFrames, timePerFrame: scaledFrameTime(0.08), resize: false, restore: false)
+
+        let offscreenTop = (scene?.size.height ?? roamRect.maxY) + 260
+        let offscreenX = CGFloat.random(in: (roamRect.minX - 120)...(roamRect.maxX + 120))
+        let jumpOutArc = arcMove(to: CGPoint(x: offscreenX, y: offscreenTop), height: 240, duration: scaledDuration(0.75))
+
+        let vanish = SKAction.run { [weak self] in
+            self?.alpha = 0
+            self?.onJumpPhaseStart?()
+        }
+
+        let survivalHold = SKAction.wait(forDuration: 10.0)
+
+        let landing = randomPoint(in: roamRect)
+        let prepareReturn = SKAction.run { [weak self] in
+            guard let self else { return }
+            self.position = CGPoint(x: landing.x, y: offscreenTop)
+            self.alpha = 1
+            self.setFacing(.down)
+        }
+
+        let jumpBackAnim = SKAction.animate(with: jumpDownFrames, timePerFrame: scaledFrameTime(0.08), resize: false, restore: false)
+        let jumpInArc = arcMove(to: landing, height: 220, duration: scaledDuration(0.75))
+
+        run(.sequence([
+            windup,
+            .group([jumpAnim, jumpOutArc]),
+            vanish,
+            survivalHold,
+            prepareReturn,
+            .group([jumpBackAnim, jumpInArc]),
+            .run { [weak self] in
+                self?.onJumpPhaseEnd?()
+                self?.playIdle(for: .down)
+            },
+            .wait(forDuration: scaledDuration(0.25)),
+            .run { [weak self] in self?.runRoamLoop() }
+        ]), withKey: "warchiefAction")
+    }
+
+    private func arcMove(to end: CGPoint, height: CGFloat, duration: TimeInterval) -> SKAction {
+        let path = CGMutablePath()
+        let start = position
+        let control = CGPoint(x: (start.x + end.x) * 0.5, y: max(start.y, end.y) + height)
+        path.move(to: start)
+        path.addQuadCurve(to: end, control: control)
+        return SKAction.follow(path, asOffset: false, orientToPath: false, duration: duration)
+    }
+
+    private func setupPhysics() {
+        let body = SKPhysicsBody(circleOfRadius: max(frame.width, frame.height) * 0.28)
+        body.isDynamic = true
+        body.affectedByGravity = false
+        body.allowsRotation = false
+        body.categoryBitMask = Cat.warchief
+        body.collisionBitMask = 0
+        body.contactTestBitMask = Cat.missile | Cat.finger
+        physicsBody = body
+    }
+
+    private func setFacing(_ newFacing: Facing) {
+        facing = newFacing
+        xScale = abs(xScale)
+        if newFacing == .left {
+            xScale = -abs(xScale)
+        }
+    }
+
+    private func playWalk(for f: Facing) {
+        let frames = framesForWalk(facing: f)
+        guard !frames.isEmpty else { return }
+        removeAction(forKey: "warchiefIdle")
+        let anim = SKAction.animate(with: frames, timePerFrame: scaledFrameTime(0.09), resize: false, restore: false)
+        run(.repeatForever(anim), withKey: "warchiefWalk")
+    }
+
+    private func playIdle(for f: Facing) {
+        let frames = framesForIdle(facing: f)
+        removeAction(forKey: "warchiefWalk")
+        guard !frames.isEmpty else { return }
+        let anim = SKAction.animate(with: frames, timePerFrame: scaledFrameTime(0.18), resize: false, restore: false)
+        run(.repeatForever(anim), withKey: "warchiefIdle")
+    }
+
+    private func framesForWalk(facing: Facing) -> [SKTexture] {
+        switch facing {
+        case .down: return walkDownFrames
+        case .up: return walkUpFrames
+        case .right, .left: return walkRightFrames
+        }
+    }
+
+    private func framesForIdle(facing: Facing) -> [SKTexture] {
+        switch facing {
+        case .down: return idleDownFrames
+        case .up: return idleUpFrames
+        case .right, .left: return idleRightFrames
+        }
+    }
+
+    private func framesForYell(facing: Facing) -> [SKTexture] {
+        return yellDownFrames
+    }
+
+    private func framesForCast(facing: Facing) -> [SKTexture] {
+        switch facing {
+        case .down: return castDownFrames
+        case .up: return castDownFrames
+        case .right, .left: return castRightFrames
+        }
+    }
+
+    private func loadAllAnimations() {
+        walkDownFrames = extractFrames(fromSheetNamed: "Warchief-iso_walk_down-v2")
+        walkUpFrames = extractFrames(fromSheetNamed: "Warchief-iso_walk_up-v2")
+        walkRightFrames = extractFrames(fromSheetNamed: "Warchief-iso_walk_right-v2")
+
+        idleDownFrames = extractFrames(fromSheetNamed: "Warchief-iso_idle_down-v2")
+        idleUpFrames = extractFrames(fromSheetNamed: "Warchief-iso_idle_up-v2")
+        idleRightFrames = extractFrames(fromSheetNamed: "Warchief-iso_idle_right-v2")
+
+        yellDownFrames = extractFrames(fromSheetNamed: "Warchief-iso_custom_yell_command_down-v1")
+
+        castDownFrames = extractFrames(fromSheetNamed: "Warchief-iso_custom_cast_down-v1")
+        castRightFrames = extractFrames(fromSheetNamed: "Warchief-iso_custom_cast_right-v1")
+        jumpDownFrames = extractFrames(fromSheetNamed: "Warchief-iso_custom_jump_phase_down-v1")
+
+        if walkDownFrames.isEmpty {
+            let fallback = SKTexture(imageNamed: "Warchief-iso_idle_down-v2")
+            fallback.filteringMode = .nearest
+            walkDownFrames = [fallback]
+            idleDownFrames = [fallback]
+        }
+    }
+
+    private func extractFrames(fromSheetNamed name: String, columns: Int = 5, rows: Int = 5) -> [SKTexture] {
+        let sheetTexture = SKTexture(imageNamed: name)
+        sheetTexture.filteringMode = .nearest
+        let frameW = 1.0 / CGFloat(columns)
+        let frameH = 1.0 / CGFloat(rows)
+
+        var frames: [SKTexture] = []
+        frames.reserveCapacity(columns * rows)
+
+        for r in 0..<rows {
+            for c in 0..<columns {
+                let nx = CGFloat(c) * frameW
+                let ny = 1.0 - CGFloat(r + 1) * frameH
+                let tex = SKTexture(rect: CGRect(x: nx, y: ny, width: frameW, height: frameH), in: sheetTexture)
+                tex.filteringMode = .nearest
+                frames.append(tex)
+            }
+        }
+
+        return frames
+    }
+
+    private func randomPoint(in rect: CGRect) -> CGPoint {
+        if rect.isNull || rect.isEmpty {
+            return position
+        }
+        let x = CGFloat.random(in: rect.minX...rect.maxX)
+        let y = CGFloat.random(in: rect.minY...rect.maxY)
+        return CGPoint(x: x, y: y)
+    }
+
+    private func resolveWarchiefRoarDuration() -> TimeInterval {
+        let names = ["warchiefroar", "WarchiefRoar", "warchiefRoar"]
+        let exts = ["mp3", "wav", "m4a", "ogg"]
+
+        for name in names {
+            if let url = Bundle.main.url(forResource: name, withExtension: nil),
+               let player = try? AVAudioPlayer(contentsOf: url) {
+                return max(0.1, player.duration)
+            }
+            for ext in exts {
+                if let url = Bundle.main.url(forResource: name, withExtension: ext),
+                   let player = try? AVAudioPlayer(contentsOf: url) {
+                    return max(0.1, player.duration)
+                }
+            }
+        }
+
+        for name in names {
+            if let asset = NSDataAsset(name: name),
+               let player = try? AVAudioPlayer(data: asset.data) {
+                return max(0.1, player.duration)
+            }
+        }
+
+        return 1.0
+    }
+
+    private func playWarchiefRoar() {
+        let names = ["warchiefroar", "WarchiefRoar", "warchiefRoar"]
+        let exts = ["mp3", "wav", "m4a", "ogg"]
+
+        roarPlayer?.stop()
+        roarPlayer = nil
+
+        for name in names {
+            if let url = Bundle.main.url(forResource: name, withExtension: nil),
+               let player = try? AVAudioPlayer(contentsOf: url) {
+                player.volume = 1.0
+                player.play()
+                roarPlayer = player
+                return
+            }
+            for ext in exts {
+                if let url = Bundle.main.url(forResource: name, withExtension: ext),
+                   let player = try? AVAudioPlayer(contentsOf: url) {
+                    player.volume = 1.0
+                    player.play()
+                    roarPlayer = player
+                    return
+                }
+            }
+        }
+
+        for name in names {
+            if let asset = NSDataAsset(name: name),
+               let player = try? AVAudioPlayer(data: asset.data) {
+                player.volume = 1.0
+                player.play()
+                roarPlayer = player
+                return
+            }
+        }
+    }
+
+    func stopRoarIfPlaying() {
+        roarPlayer?.stop()
+        roarPlayer?.currentTime = 0
+    }
+
+    func pauseRoarForScenePause() {
+        roarPlayer?.pause()
+    }
+
+    func resumeRoarForScenePause() {
+        roarPlayer?.play()
+    }
 
 }

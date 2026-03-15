@@ -87,7 +87,22 @@ final class PlayerInventory: ObservableObject {
 
     // MARK: Coins
 
-    func addCoins(_ amount: Int) { coins += amount }
+    func addCoins(_ amount: Int) {
+        guard amount != 0 else { return }
+
+        if amount > 0 {
+            let (sum, overflow) = coins.addingReportingOverflow(amount)
+            coins = overflow ? Int.max : sum
+        } else {
+            // Prevent underflow and negative totals.
+            let newValue = coins + amount
+            coins = max(0, newValue)
+        }
+    }
+
+    func setCoins(_ amount: Int) {
+        coins = max(0, amount)
+    }
 
     // MARK: Buy
 

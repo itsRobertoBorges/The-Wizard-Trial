@@ -7,6 +7,7 @@ struct WorldSelectionView: View {
 
     private let bgPortal = "portal"
     @State private var showingIntro = false
+    @State private var showingBlackrockIntro = false
     private let worlds: [WorldID] = [
         .witheringTree,
         .blackrockValley,
@@ -119,6 +120,12 @@ struct WorldSelectionView: View {
                             onSelectWorld(.witheringTree)
                         }
                     }
+                    .fullScreenCover(isPresented: $showingBlackrockIntro) {
+                        BlackrockValleyIntroView {
+                            showingBlackrockIntro = false
+                            onSelectWorld(.blackrockValley)
+                        }
+                    }
 
 
                     .contentShape(Rectangle())
@@ -138,6 +145,9 @@ struct WorldSelectionView: View {
                         if worlds[index] == .witheringTree {
                             stopMusic()
                             showingIntro = true
+                        } else if worlds[index] == .blackrockValley {
+                            stopMusic()
+                            showingBlackrockIntro = true
                         } else {
                             onSelectWorld(worlds[index])
                         }
@@ -239,3 +249,190 @@ struct WorldSelectionView: View {
     }
 }
 
+struct BlackrockValleyIntroView: View {
+    let onFinish: () -> Void
+
+    @State private var currentScene = 0
+    @State private var introBlackOverlayOpacity: Double = 1.0
+    private let sceneImages = [
+        "blackrockscene1",
+        "blackrockscene2",
+        "blackrockscene3",
+        "blackrockscene4",
+        "blackrockscene 5"
+    ]
+
+    private let sceneTexts = [
+        "The Blackrock Clan holds the Fire Sage captive.\nThrough ash-choked hills and the hostile Red Orcs that guard the valley, the wizard marches toward their fortress.",
+        "Word spreads through the valley. The Red Orcs gather, glaring from behind jagged shields and burning braziers.",
+        "Lord Zethex gave the Fire Sage to the Orcs as a prisoner. He said that in exchange, he would give the Orcs more land beyond the valley. The pact is vile, but the clan keeps its bargains.",
+        "The Red Orcs are brutal, but honor-bound. They knew the wizard was coming and chose not to kill him at the gates.",
+        "Instead, they bring him into Blackrock's colosseum. If the Wizard can defeat the Warchief and his armies, then the Fire Sage will be freed. The Warchief is a fearsome warrior, but he is also a man of honor."
+    ]
+
+    @State private var typedText = ""
+    @State private var textIndex = 0
+    @State private var typeTimer: Timer?
+
+    @State private var bgmPlayer: AVAudioPlayer?
+    @State private var scrollPlayer: AVAudioPlayer?
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            GeometryReader { geo in
+                Image(sceneImages[currentScene])
+                    .resizable()
+                    .interpolation(.none)
+                    .scaledToFill()
+                    .scaleEffect(currentScene == 0 ? 1.30 : 1.0)
+                    .frame(
+                        width: geo.size.width,
+                        height: currentScene == 0 ? geo.size.height + 180 : geo.size.height
+                    )
+                    .offset(y: currentScene == 0 ? 60 : 0)
+                    .clipped()
+                    .ignoresSafeArea()
+            }
+
+            Color.black
+                .opacity(introBlackOverlayOpacity)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+
+            VStack {
+                Spacer()
+
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.black.opacity(0.65))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 180)
+                        .padding(.horizontal, 18)
+
+                    Text(typedText)
+                        .font(.custom("PressStart2P-Regular", size: 12))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 28)
+                        .padding(.vertical, 12)
+                        .multilineTextAlignment(.leading)
+                }
+
+                Button(action: nextScene) {
+                    Text(currentScene == sceneTexts.count - 1 ? "BEGIN" : "CONTINUE")
+                        .font(.custom("PressStart2P-Regular", size: 14))
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(Color.yellow, in: Capsule())
+                }
+                .padding(.top, 12)
+
+                Button(action: skipCinematic) {
+                    Text("SKIP")
+                        .font(.custom("PressStart2P-Regular", size: 12))
+                        .foregroundColor(.white.opacity(0.7))
+                        .padding(.top, 6)
+                }
+
+                Spacer().frame(height: 20)
+            }
+        }
+        .onAppear {
+            startMusic()
+            startScene(0)
+            introBlackOverlayOpacity = 1.0
+            withAnimation(.easeInOut(duration: 1.0)) {
+                introBlackOverlayOpacity = 0
+            }
+        }
+        .onDisappear {
+            stopAllAudio()
+        }
+    }
+
+    private func startScene(_ index: Int) {
+        typedText = ""
+        textIndex = 0
+        playScrollSound()
+
+        let fullText = sceneTexts[index]
+        typeTimer?.invalidate()
+        typeTimer = Timer.scheduledTimer(withTimeInterval: 0.03, repeats: true) { timer in
+            if textIndex < fullText.count {
+                let charIndex = fullText.index(fullText.startIndex, offsetBy: textIndex)
+                typedText.append(fullText[charIndex])
+                textIndex += 1
+            } else {
+                timer.invalidate()
+                stopScrollSound()
+            }
+        }
+    }
+
+    private func nextScene() {
+        stopScrollSound()
+        typeTimer?.invalidate()
+
+        if currentScene < sceneTexts.count - 1 {
+            currentScene += 1
+            startScene(currentScene)
+        } else {
+            finish()
+        }
+    }
+
+    private func skipCinematic() {
+        stopScrollSound()
+        typeTimer?.invalidate()
+        finish()
+    }
+
+    private func finish() {
+        stopAllAudio()
+        onFinish()
+    }
+
+    private func startMusic() {
+        guard let url = Bundle.main.url(forResource: "blackrockintrotheme", withExtension: "mp3") else {
+            print("⚠️ blackrockintrotheme.mp3 not found")
+            return
+        }
+
+        do {
+            bgmPlayer = try AVAudioPlayer(contentsOf: url)
+            bgmPlayer?.numberOfLoops = -1
+            bgmPlayer?.volume = 1.0
+            bgmPlayer?.play()
+        } catch {
+            print("❌ Failed to play Blackrock intro music:", error)
+        }
+    }
+
+    private func playScrollSound() {
+        guard let url = Bundle.main.url(forResource: "textscroll", withExtension: "wav") else {
+            print("⚠️ textscroll.wav missing")
+            return
+        }
+
+        do {
+            scrollPlayer = try AVAudioPlayer(contentsOf: url)
+            scrollPlayer?.numberOfLoops = -1
+            scrollPlayer?.volume = 0.8
+            scrollPlayer?.play()
+        } catch {
+            print("❌ Scroll sound error:", error)
+        }
+    }
+
+    private func stopScrollSound() {
+        scrollPlayer?.stop()
+        scrollPlayer = nil
+    }
+
+    private func stopAllAudio() {
+        bgmPlayer?.stop()
+        scrollPlayer?.stop()
+    }
+}

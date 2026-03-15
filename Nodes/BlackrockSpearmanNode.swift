@@ -31,14 +31,17 @@ final class BlackrockSpearmanNode: SKSpriteNode {
 
         return [f0, f1]
     }()
+    private static var lastSpawnSfxTime: TimeInterval = -1_000
+    private static let spawnSfxCooldown: TimeInterval = 0.35
     
     // Physics
     
     let maxHP: Int = 60
     private(set) var hp: Int = 60
+    private var isDying = false
 
     private func configurePhysics() {
-        let body = SKPhysicsBody(circleOfRadius: max(size.width, size.height) * 0.18)
+        let body = SKPhysicsBody(circleOfRadius: max(frame.size.width, frame.size.height) * 0.18)
         body.isDynamic = true
         body.affectedByGravity = false
         body.categoryBitMask = Cat.spearman
@@ -49,7 +52,17 @@ final class BlackrockSpearmanNode: SKSpriteNode {
     }
 
     func takeDamage(_ amount: Int) -> Bool {
-        hp -= amount
+        guard !isDying else { return false }
+
+        hp = max(0, hp - amount)
+
+        let flash = SKAction.sequence([
+            .colorize(with: .red, colorBlendFactor: 0.85, duration: 0.08),
+            .colorize(withColorBlendFactor: 0.0, duration: 0.15)
+        ])
+        removeAction(forKey: "hitFlash")
+        run(flash, withKey: "hitFlash")
+
         if hp <= 0 {
             die()
             return true
@@ -58,6 +71,7 @@ final class BlackrockSpearmanNode: SKSpriteNode {
     }
 
     private func die() {
+        isDying = true
         removeAllActions()
         physicsBody = nil
         run(.sequence([
@@ -88,7 +102,9 @@ final class BlackrockSpearmanNode: SKSpriteNode {
         let scale = desiredDiameter / max(base, 1)
         setScale(scale)
 
+        configurePhysics()
 
+        queueSpawnSound()
         startWalkAnimation()
         startMovingDown(sceneHeight: sceneHeight)
     }
@@ -115,6 +131,23 @@ final class BlackrockSpearmanNode: SKSpriteNode {
         moveDown.timingMode = .linear
 
         run(.sequence([moveDown, .removeFromParent()]), withKey: "moveDown")
+    }
+
+    private func queueSpawnSound() {
+        // Runs when the node starts updating in-scene.
+        run(.sequence([
+            .wait(forDuration: 0.01),
+            .run { [weak self] in
+                self?.playSpawnSoundIfNeeded()
+            }
+        ]), withKey: "spawnSfx")
+    }
+
+    private func playSpawnSoundIfNeeded() {
+        let now = CACurrentMediaTime()
+        guard now - Self.lastSpawnSfxTime >= Self.spawnSfxCooldown else { return }
+        Self.lastSpawnSfxTime = now
+        scene?.run(.playSoundFileNamed("spearmanCharge.wav", waitForCompletion: false))
     }
 
 }

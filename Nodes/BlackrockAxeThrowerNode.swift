@@ -1,5 +1,4 @@
-//
-//  BlackrockAxeThrowerNode.swift
+////  BlackrockAxeThrowerNode.swift
 //  The Wizard's Trial
 //
 //  Created by Roberto on 2025-12-02.
@@ -33,7 +32,7 @@ final class BlackrockAxeThrowerNode: SKSpriteNode {
     var speedMultiplier: CGFloat = 1.0
 
     private let moveSpeed: CGFloat = 120
-    private let throwInterval: TimeInterval = 3.0
+    private let throwInterval: TimeInterval = 5.0
     private var timeSinceLastThrow: TimeInterval = 0
 
     // MARK: - Animation
@@ -259,7 +258,15 @@ final class BlackrockAxeThrowerNode: SKSpriteNode {
     func takeDamage(_ amount: Int) -> Bool {
         guard state != .dead else { return false }
 
-        hp -= amount
+        hp = max(0, hp - amount)
+
+        let flash = SKAction.sequence([
+            .colorize(with: .red, colorBlendFactor: 0.85, duration: 0.08),
+            .colorize(withColorBlendFactor: 0.0, duration: 0.15)
+        ])
+        removeAction(forKey: "hitFlash")
+        run(flash, withKey: "hitFlash")
+
         if hp <= 0 {
             die()
             return true

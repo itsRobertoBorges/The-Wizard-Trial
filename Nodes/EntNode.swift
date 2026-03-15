@@ -1,8 +1,50 @@
 import SpriteKit
 
 final class EntNode: SKSpriteNode {
+
+    enum Kind {
+        case forestEnt
+        case undeadKnight
+
+        var sheetName: String {
+            switch self {
+            case .forestEnt:
+                return "ent"
+            case .undeadKnight:
+                return "undead_knightwalk"
+            }
+        }
+
+        var nodeName: String {
+            switch self {
+            case .forestEnt:
+                return "ent"
+            case .undeadKnight:
+                return "undeadKnight"
+            }
+        }
+
+        var scaleMultiplier: CGFloat {
+            switch self {
+            case .forestEnt:
+                return 1.6
+            case .undeadKnight:
+                return 1.8
+            }
+        }
+
+        var walkFrameTime: TimeInterval {
+            switch self {
+            case .forestEnt:
+                return 0.12
+            case .undeadKnight:
+                return 0.10
+            }
+        }
+    }
     
     var speedMultiplier: CGFloat = 1.0
+    let kind: Kind
     
 
     // Simple HP
@@ -14,51 +56,69 @@ final class EntNode: SKSpriteNode {
     private let walkActionKey = "entWalk"
 
     // MARK: - Init matching GameScene (targetDiameter:)
-    init(targetDiameter: CGFloat) {
-        // Make sure your sheet is named "ent" in Assets
-        let sheet = SKTexture(imageNamed: "ent")
+    init(targetDiameter: CGFloat, kind: Kind = .forestEnt) {
+        self.kind = kind
+
+        let sheet = SKTexture(imageNamed: kind.sheetName)
         sheet.filteringMode = .nearest
 
-        // 2 rows × 3 columns
-        let rows = 2
-        let cols = 3
-
-        let frameWidth  = 1.0 / CGFloat(cols)
-        let frameHeight = 1.0 / CGFloat(rows)
-
         walkFrames.removeAll()
-
-        // Use the TOP row of the sheet (row index 1 in SpriteKit UV space)
-        let walkRow = 1
-
-        // 🔹 epsilon to avoid sampling neighbour pixels (prevents that tiny line)
         let epsilon: CGFloat = 0.002
 
-        for col in 0..<cols {
-            let u = CGFloat(col) * frameWidth
-            let v = CGFloat(walkRow) * frameHeight
+        switch kind {
+        case .forestEnt:
+            let rows = 2
+            let cols = 3
+            let frameWidth = 1.0 / CGFloat(cols)
+            let frameHeight = 1.0 / CGFloat(rows)
+            let walkRow = 1
 
-            let rect = CGRect(
-                x: u + epsilon,
-                y: v + epsilon,
-                width: frameWidth  - 2 * epsilon,
-                height: frameHeight - 2 * epsilon
-            )
+            for col in 0..<cols {
+                let u = CGFloat(col) * frameWidth
+                let v = CGFloat(walkRow) * frameHeight
+                let rect = CGRect(
+                    x: u + epsilon,
+                    y: v + epsilon,
+                    width: frameWidth - 2 * epsilon,
+                    height: frameHeight - 2 * epsilon
+                )
 
-            let tex = SKTexture(rect: rect, in: sheet)
-            tex.filteringMode = .nearest
-            walkFrames.append(tex)
+                let tex = SKTexture(rect: rect, in: sheet)
+                tex.filteringMode = .nearest
+                walkFrames.append(tex)
+            }
+
+        case .undeadKnight:
+            let cols = 6
+            let frameWidth = 1.0 / CGFloat(cols)
+            // The sprite sheet has a single visible row with a large transparent band
+            // above and below, so crop the occupied vertical region only.
+            let visibleBand = CGRect(x: 0, y: 0.18, width: 1.0, height: 0.54)
+
+            for col in 0..<cols {
+                let u = CGFloat(col) * frameWidth
+                let rect = CGRect(
+                    x: u + epsilon,
+                    y: visibleBand.minY + epsilon,
+                    width: frameWidth - 2 * epsilon,
+                    height: visibleBand.height - 2 * epsilon
+                )
+
+                let tex = SKTexture(rect: rect, in: sheet)
+                tex.filteringMode = .nearest
+                walkFrames.append(tex)
+            }
         }
 
         let startTexture = walkFrames.first ?? sheet
         super.init(texture: startTexture, color: .clear, size: startTexture.size())
 
-        name = "ent"
+        name = kind.nodeName
         zPosition = 5
 
         // Scale him relative to the wizard/finger radius
         let baseSize = max(startTexture.size().width, startTexture.size().height)
-        let scale = (targetDiameter * 1.6) / baseSize   // bump this up/down for size
+        let scale = (targetDiameter * kind.scaleMultiplier) / baseSize
         setScale(scale)
 
         setupPhysics()
@@ -141,7 +201,7 @@ final class EntNode: SKSpriteNode {
 
         let animate = SKAction.animate(
             with: walkFrames,
-            timePerFrame: 0.12,
+            timePerFrame: kind.walkFrameTime,
             resize: false,
             restore: false
         )
